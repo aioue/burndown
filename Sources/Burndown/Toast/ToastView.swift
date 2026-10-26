@@ -7,8 +7,13 @@ final class ToastHover {
     var isHovered = false
 }
 
+/// Laid out to match a macOS alert-style notification. Measured from a Tahoe screenshot (2x):
+/// 344 x 72 pt card, ~20 pt corners, 32 pt icon 13 pt from the edge, text 13 pt (title semibold, body
+/// regular, 16 pt line pitch) starting 58 pt in, timestamp right-aligned.
 struct ToastView: View {
-    static let width: CGFloat = 360
+    static let width: CGFloat = 344
+    static let radius: CGFloat = 20
+    static let actionWidth: CGFloat = 78
 
     let model: ToastModel
     let hover: ToastHover
@@ -17,53 +22,89 @@ struct ToastView: View {
     let onClose: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(nsImage: NSWorkspace.shared.icon(forFile: model.fileURL.path))
-                .resizable()
-                .frame(width: 40, height: 40)
-            VStack(alignment: .leading, spacing: 10) {
-                Text(message)
-                    .font(.callout)
-                    .lineLimit(3)
-                    .truncationMode(.middle)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                HStack(spacing: 8) {
-                    Spacer(minLength: 0)
-                    Button(model.secondLabel, action: onSecond)
-                    Button(model.keepLabel, action: onKeep)
-                        .buttonStyle(.borderedProminent)
+        HStack(spacing: 0) {
+            HStack(alignment: .top, spacing: 13) {
+                Image(nsImage: NSWorkspace.shared.icon(forFile: model.fileURL.path))
+                    .resizable()
+                    .frame(width: 32, height: 32)
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(title)
+                            .font(.system(size: 13, weight: .semibold))
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        Spacer(minLength: 0)
+                        Text("now")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(bodyText)
+                        .font(.system(size: 13))
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .controlSize(.small)
             }
+            .padding(.leading, 13)
+            .padding(.trailing, 12)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onDrag { NSItemProvider(contentsOf: model.fileURL) ?? NSItemProvider() }
+
+            // Alert-style action column: two flat cells split by hairlines.
+            Rectangle().fill(.separator).frame(width: 0.5)
+            VStack(spacing: 0) {
+                actionCell(model.keepLabel, onKeep)
+                Rectangle().fill(.separator).frame(height: 0.5)
+                actionCell(model.secondLabel, onSecond)
+            }
+            .frame(width: Self.actionWidth)
         }
-        .padding(12)
-        .contentShape(Rectangle())
-        .onDrag { NSItemProvider(contentsOf: model.fileURL) ?? NSItemProvider() }
         .frame(width: Self.width)
-        .glassEffect(.regular, in: .rect(cornerRadius: 16))
+        .frame(minHeight: 60)
+        .glassEffect(.regular, in: .rect(cornerRadius: Self.radius))
         .overlay(alignment: .topLeading) {
             if hover.isHovered {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 8, weight: .bold))
-                        .frame(width: 16, height: 16)
+                        .font(.system(size: 9, weight: .semibold))
+                        .frame(width: 20, height: 20)
                         .background(.regularMaterial, in: Circle())
+                        .overlay(Circle().strokeBorder(.separator))
                 }
                 .buttonStyle(.plain)
-                .offset(x: -5, y: -5)
+                .offset(x: -6, y: -6)
                 .help("Dismiss")
             }
         }
-        .padding(6)
+        .padding(8)
     }
 
-    /// The filename prefix is bolded when the message starts with it.
-    private var message: AttributedString {
-        let name = model.fileURL.lastPathComponent
-        guard model.message.hasPrefix(name) else { return AttributedString(model.message) }
-        var bold = AttributedString(name)
-        bold.inlinePresentationIntent = .stronglyEmphasized
-        return bold + AttributedString(String(model.message.dropFirst(name.count)))
+    private func actionCell(_ label: String, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 13))
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(ToastActionStyle())
+    }
+
+    private var title: String { model.fileURL.lastPathComponent }
+
+    /// "will be trashed after 14 days" shown as a sentence under the filename title.
+    private var bodyText: String {
+        guard model.message.hasPrefix(title) else { return model.message }
+        let rest = model.message.dropFirst(title.count).trimmingCharacters(in: .whitespaces)
+        return rest.prefix(1).uppercased() + rest.dropFirst()
+    }
+}
+
+private struct ToastActionStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(.primary)
+            .background(configuration.isPressed ? Color.primary.opacity(0.12) : .clear)
     }
 }
