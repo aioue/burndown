@@ -5,8 +5,6 @@ import AppKit
 enum MenuBarIcon {
     static let normal = make(draw: drawBurning)
     static let paused = make(draw: drawPaused)
-    /// Temporary alias until the menu bar label switches on the paused state.
-    static var image: NSImage { normal }
 
     private static func make(draw: @escaping () -> Void) -> NSImage {
         let img = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in

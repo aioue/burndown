@@ -1,13 +1,35 @@
 import AppKit
+import ServiceManagement
 import SwiftUI
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel()
+    private var termSource: DispatchSourceSignal?
+
+    override init() {
+        super.init()
+        // Turn SIGTERM into a normal quit so the screenshot log helper process is stopped with us.
+        signal(SIGTERM, SIG_IGN)
+        let src = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
+        src.setEventHandler { NSApp.terminate(nil) }
+        src.resume()
+        termSource = src
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        model.shutdown()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         model.start()
         setStatusItemTooltip(attempt: 0)
+        // Register as a login item once, for installed copies only; turning it off in the menu sticks.
+        let defaults = UserDefaults.standard
+        if !defaults.bool(forKey: "didOfferLoginItem"), Bundle.main.bundlePath.hasPrefix("/Applications/") {
+            defaults.set(true, forKey: "didOfferLoginItem")
+            try? SMAppService.mainApp.register()
+        }
     }
 
     /// MenuBarExtra has no tooltip API, so find its status bar button and set one (the window appears
@@ -39,7 +61,7 @@ struct BurndownApp: App {
         MenuBarExtra {
             MenuContent(model: delegate.model)
         } label: {
-            Image(nsImage: MenuBarIcon.image)
+            Image(nsImage: delegate.model.settings.paused ? MenuBarIcon.paused : MenuBarIcon.normal)
         }
         .menuBarExtraStyle(.window)
 

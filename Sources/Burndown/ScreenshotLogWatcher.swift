@@ -30,7 +30,19 @@ final class ScreenshotLogWatcher {
     func start() {
         wanted = true
         quickFailures = 0
+        Self.killStrays()
         launch()
+    }
+
+    /// A `log stream` child outlives the app if it is force-quit or killed, so clear out any left over.
+    private static func killStrays() {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
+        p.arguments = ["-f", predicate]
+        p.standardOutput = FileHandle.nullDevice
+        p.standardError = FileHandle.nullDevice
+        try? p.run()
+        p.waitUntilExit()
     }
 
     func stop() {

@@ -39,6 +39,7 @@ final class DownloadsWatcher {
     /// Inodes present at start() plus everything already reported.
     private var known: Set<UInt64> = []
     private var pending: [String: Pending] = [:]
+    private var starting = false
 
     init(directory: URL, onArrival: @escaping @MainActor (URL) -> Void) {
         self.directory = directory
@@ -50,9 +51,21 @@ final class DownloadsWatcher {
         Self.teardown(stream, ref)
     }
 
+    /// The first directory listing can block on the macOS "access your Downloads folder" prompt, so it
+    /// runs off the main thread and the stream only starts once it returns.
     func start() {
-        guard stream == nil else { return }
-        known = Set(children().compactMap { Self.inode(of: $0) })
+        guard stream == nil, !starting else { return }
+        starting = true
+        let path = dirPath
+        Task { [weak self] in
+            let inodes = await Task.detached { Self.snapshotInodes(atPath: path) }.value
+            self?.begin(known: inodes)
+        }
+    }
+
+    private func begin(known inodes: Set<UInt64>) {
+        guard starting, stream == nil else { return }
+        known = inodes
         let box = Unmanaged.passRetained(Ref(self))
         var ctx = FSEventStreamContext(version: 0, info: box.toOpaque(), retain: nil, release: nil, copyDescription: nil)
         let flags = FSEventStreamCreateFlags(kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagUseCFTypes)
@@ -66,6 +79,7 @@ final class DownloadsWatcher {
     }
 
     func stop() {
+        starting = false
         Self.teardown(stream, ref)
         stream = nil
         ref = nil
@@ -182,9 +196,15 @@ final class DownloadsWatcher {
             .map { URL(fileURLWithPath: (dirPath as NSString).appendingPathComponent($0)) }
     }
 
+    private nonisolated static func snapshotInodes(atPath dirPath: String) -> Set<UInt64> {
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: dirPath)) ?? []
+        return Set(names.filter { !PartialFilter.shouldSkip(name: $0) }
+            .compactMap { inode(atPath: (dirPath as NSString).appendingPathComponent($0)) })
+    }
+
     private static func inode(of url: URL) -> UInt64? { inode(atPath: url.path) }
 
-    private static func inode(atPath path: String) -> UInt64? {
+    private nonisolated static func inode(atPath path: String) -> UInt64? {
         var st = stat()
         guard lstat(path, &st) == 0 else { return nil }
         return UInt64(st.st_ino)

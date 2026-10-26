@@ -72,6 +72,10 @@ final class AppModel {
         expireDue()
     }
 
+    func shutdown() {
+        screenshotLogWatcher?.stop()
+    }
+
     // MARK: Tracking
 
     func track(_ url: URL, scope: Scope, toast: Bool = true) {
