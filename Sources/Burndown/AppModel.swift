@@ -66,12 +66,36 @@ final class AppModel {
         watcher.start()
         downloadsWatcher = watcher
         syncScreenshots()
+        requestFolderAccess()
         wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
         ) { [weak self] _ in
             Task { @MainActor in self?.expireDue() }
         }
         expireDue()
+    }
+
+    /// macOS only asks for access to Downloads, Desktop and Documents the first time an app touches them.
+    /// Touch every folder Burndown relies on now, in one go at launch, so the prompts appear then and not
+    /// later when a menu row happens to look at a file (each can block until answered, hence off the
+    /// main thread and one after another).
+    private func requestFolderAccess() {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let prefs = UserDefaults(suiteName: "com.apple.screencapture")
+        var folders: [String] = [downloadsDir.path]
+        if state.settings.screenshots.enabled {
+            folders.append(((prefs?.string(forKey: "location") ?? home.appendingPathComponent("Desktop").path)
+                as NSString).expandingTildeInPath)
+        }
+        // Wherever tracked files already live, e.g. screenshots saved to Documents.
+        for item in state.items {
+            folders.append((item.path as NSString).deletingLastPathComponent)
+        }
+        var seen = Set<String>()
+        let unique = folders.filter { seen.insert($0).inserted }
+        Task.detached(priority: .utility) {
+            for folder in unique { _ = try? FileManager.default.contentsOfDirectory(atPath: folder) }
+        }
     }
 
     func shutdown() {

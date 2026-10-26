@@ -155,17 +155,18 @@ To try it without installing, `make run` builds and opens
 
 | What              | When                         | Why                      |
 | ----------------- | ---------------------------- | ------------------------ |
-| Downloads folder  | First launch                 | To see and remove files  |
-| Screenshot folder | Turning on screenshots       | To see screenshots there |
+| Downloads folder  | Launch                       | To see and remove files  |
+| Screenshot folder | Launch, if screenshots on    | To see screenshots there |
 | Admin account     | Early screenshot toast       | `log stream` needs one   |
 | Login item        | First run from /Applications | Launch at login          |
 
-- **Downloads**: macOS asks once whether Burndown may access your Downloads
-  folder. Without it, nothing is tracked.
-- **Screenshot folder**: screenshots are found with Spotlight, which hides
-  results from protected folders such as Desktop and Documents until the app
-  has access. Burndown opens your screenshot folder (Desktop by default) when
-  tracking is turned on, so macOS asks then.
+- **Folders**: Burndown asks for folder access when it starts, so the macOS
+  prompts all appear at launch, not later when you open a menu. It touches
+  Downloads, your screenshot folder (Desktop by default) if screenshot
+  tracking is on, and any folder that already holds a tracked file. Without
+  Downloads access nothing is tracked. Screenshots are found with Spotlight,
+  which hides results from protected folders such as Desktop and Documents
+  until the app has been given access.
 - **Admin account**: for the early screenshot toast, Burndown runs
   `/usr/bin/log stream` as a child process to catch the moment a screenshot
   is taken, and macOS only lets admin accounts stream the system log. On a
