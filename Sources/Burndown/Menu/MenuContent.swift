@@ -4,13 +4,15 @@ import SwiftUI
 struct MenuContent: View {
     @Bindable var model: AppModel
     @Environment(\.openSettings) private var openSettings
-    @State private var page: Page
+    @State private var open: Page?
+    /// Bottom edge of the Tracked files / Activity row in the panel, where the dropdown hangs from.
+    @State private var rowBottom: CGFloat = 0
 
-    enum Page { case main, tracked, activity }
+    enum Page { case tracked, activity }
 
-    init(model: AppModel, page: Page = .main) {
+    init(model: AppModel, open: Page? = nil) {
         self.model = model
-        _page = State(initialValue: page)
+        _open = State(initialValue: open)
     }
 
     private static let presets: [(String, Lifetime)] = [
@@ -20,21 +22,6 @@ struct MenuContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            switch page {
-            case .main: mainPage
-            case .tracked: listPage("Tracked files", count: model.state.items.count, trackedRows)
-            case .activity: listPage("Activity", count: min(model.state.log.count, 50), activityRows)
-            }
-        }
-        .padding(12)
-        .frame(width: 340)
-        .onDisappear { page = .main }
-    }
-
-    // MARK: Main page
-
-    private var mainPage: some View {
-        Group {
             Toggle("Pause tracking", isOn: $model.settings.paused)
 
             Divider()
@@ -47,6 +34,7 @@ struct MenuContent: View {
                 Spacer()
                 pageLink("Activity", .activity)
             }
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named("panel")).maxY } action: { rowBottom = $0 }
 
             Divider()
             HStack {
@@ -59,13 +47,54 @@ struct MenuContent: View {
                 Button("Quit") { NSApp.terminate(nil) }
             }
         }
+        .padding(12)
+        .frame(width: 340)
+        .coordinateSpace(name: "panel")
+        // Make room for the dropdown if it is taller than the menu below its row.
+        .frame(minHeight: open.map { rowBottom + 6 + dropdownHeight($0) + 12 }, alignment: .top)
+        .overlay(alignment: .topLeading) { dropdownLayer }
+        .onDisappear { open = nil }
+    }
+
+    // MARK: Dropdown
+
+    private func rowCount(_ page: Page) -> Int {
+        switch page {
+        case .tracked: model.state.items.count
+        case .activity: min(model.state.log.count, 50)
+        }
+    }
+
+    private func dropdownHeight(_ page: Page) -> CGFloat {
+        min(max(CGFloat(rowCount(page)), 1) * 36, 320) + 20
+    }
+
+    @ViewBuilder private var dropdownLayer: some View {
+        if let page = open {
+            ZStack(alignment: .topLeading) {
+                // Click anywhere else to close.
+                Color.black.opacity(0.001).onTapGesture { open = nil }
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        if page == .tracked { trackedRows } else { activityRows }
+                    }
+                    .padding(10)
+                }
+                .frame(width: 316, height: dropdownHeight(page))
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.separator))
+                .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
+                .offset(x: 12, y: rowBottom + 6)
+            }
+        }
     }
 
     private func pageLink(_ title: String, _ target: Page) -> some View {
-        Button { page = target } label: {
+        Button { open = (open == target) ? nil : target } label: {
             HStack(spacing: 3) {
                 Text(title)
-                Image(systemName: "chevron.right").font(.system(size: 9, weight: .semibold))
+                Image(systemName: open == target ? "chevron.down" : "chevron.right")
+                    .font(.system(size: 9, weight: .semibold))
             }
         }
         .buttonStyle(.plain)
@@ -91,31 +120,7 @@ struct MenuContent: View {
         }
     }
 
-    // MARK: List pages
-
-    private func listPage(_ title: String, count: Int, _ rows: some View) -> some View {
-        Group {
-            HStack {
-                Button { page = .main } label: {
-                    HStack(spacing: 3) {
-                        Image(systemName: "chevron.left").font(.system(size: 9, weight: .semibold))
-                        Text("Back")
-                    }
-                }
-                .buttonStyle(.plain)
-                Spacer()
-                Text(title).font(.headline)
-                Spacer()
-                Text("Back").hidden() // keeps the title centred
-            }
-            Divider()
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 8) { rows }
-            }
-            // A ScrollView has no natural height, so size it to its rows up to a cap.
-            .frame(height: min(max(CGFloat(count), 1) * 36, 320))
-        }
-    }
+    // MARK: Rows
 
     @ViewBuilder private var trackedRows: some View {
         let items = model.state.items.sorted { ($0.due ?? .distantFuture) < ($1.due ?? .distantFuture) }

@@ -194,8 +194,8 @@ enum DocsRender {
         try menuBarIcons(out)
         try toasts(out)
         try snapshot(popover(MenuContent(model: model)), name: "menu", into: out)
-        try snapshot(popover(MenuContent(model: model, page: .tracked)), name: "menu-tracked", into: out)
-        try snapshot(popover(MenuContent(model: model, page: .activity)), name: "menu-activity", into: out)
+        try snapshot(popover(MenuContent(model: model, open: .tracked)), name: "menu-tracked", into: out)
+        try snapshot(popover(MenuContent(model: model, open: .activity)), name: "menu-activity", into: out)
         try settings(model: model, into: out)
     }
 
