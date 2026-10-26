@@ -121,6 +121,7 @@ final class AppModel {
         let id = shot.id
         shot.toast = ToastCenter.shared.show(ToastModel(
             fileURL: capture.url,
+            placeholder: "📸",
             message: "\(name) will be \(action.pastTense) after \(life.phrase)",
             keepLabel: s.keepLabel,
             secondLabel: s.secondLabel ?? s.secondButton.defaultLabel,

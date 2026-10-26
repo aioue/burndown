@@ -93,6 +93,10 @@ struct ToastView: View {
                 .frame(width: 32, height: 32)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
                 .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(.separator))
+        } else if let placeholder = model.placeholder {
+            Text(placeholder)
+                .font(.system(size: 27))
+                .frame(width: 32, height: 32)
         } else {
             Image(nsImage: NSWorkspace.shared.icon(forFile: model.fileURL.path))
                 .resizable()

@@ -3,6 +3,8 @@ import SwiftUI
 
 struct ToastModel {
     let fileURL: URL
+    /// Shown in the icon slot instead of the file-type icon (until a preview arrives).
+    var placeholder: String?
     let message: String
     let keepLabel: String
     let secondLabel: String
