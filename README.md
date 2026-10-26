@@ -24,9 +24,9 @@ make install   # copy to /Applications
 ## Behaviour
 
 - **Keep** adds a Finder tag called `Keep` to the file and stops tracking it. Remove the tag in Finder to
-  un-keep it (it will be picked up again only if it is re-downloaded or adopted).
-- Files already in Downloads when you first launch are left alone. Use **Adopt existing files** in the menu to
-  start their countdown.
+  un-keep it (it is only tracked again if it is re-downloaded).
+- Files already in Downloads when you first launch are left alone; only files that arrive afterwards are
+  tracked.
 - A file moved out of Downloads is untracked (you have filed it), and a file with the `Keep` tag is never
   removed.
 - Screenshot tracking is off by default and only picks up screenshots taken after it is enabled.

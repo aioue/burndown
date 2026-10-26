@@ -19,15 +19,9 @@ struct MenuContent: View {
             scopeRow("Screenshots", $model.settings.screenshots)
 
             Divider()
-            trackedList
-
-            Divider()
             HStack {
-                Button("Adopt existing files") { model.adoptExisting() }
+                trackedList
                 Spacer()
-                Toggle("Launch at login", isOn: $model.launchAtLogin)
-            }
-            HStack {
                 Menu("Activity") {
                     if model.state.log.isEmpty { Text("Nothing expired yet") }
                     ForEach(model.state.log.prefix(15)) { e in
@@ -36,11 +30,16 @@ struct MenuContent: View {
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
+            }
+
+            Divider()
+            HStack {
                 Button("Settings…") {
                     NSApp.activate()
                     openSettings()
                 }
                 Spacer()
+                Toggle("Launch at login", isOn: $model.launchAtLogin)
                 Button("Quit") { NSApp.terminate(nil) }
             }
         }
@@ -84,6 +83,7 @@ struct MenuContent: View {
             if items.count > shown.count { Text("+ \(items.count - shown.count) more") }
         }
         .menuStyle(.borderlessButton)
+        .fixedSize()
     }
 
     private static func when(_ item: TrackedItem) -> String {

@@ -146,14 +146,6 @@ final class AppModel {
         }
     }
 
-    /// Menu action: start countdowns for files already sitting in Downloads.
-    func adoptExisting() {
-        let urls = (try? FileManager.default.contentsOfDirectory(at: downloadsDir, includingPropertiesForKeys: nil)) ?? []
-        for url in urls where !PartialFilter.shouldSkip(name: url.lastPathComponent) {
-            track(url, scope: .download, toast: false)
-        }
-    }
-
     private func showToast(for item: TrackedItem, lifetime: Lifetime) {
         let s = state.settings
         let secondLabel = s.secondLabel ?? s.secondButton.defaultLabel
