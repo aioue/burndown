@@ -57,6 +57,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 struct BurndownApp: App {
     @NSApplicationDelegateAdaptor private var delegate: AppDelegate
 
+    /// Runs before the delegate (and its model) is created, so `--render-docs` never loads real state.
+    init() {
+        DocsRender.runIfRequested()
+    }
+
     var body: some Scene {
         MenuBarExtra {
             MenuContent(model: delegate.model)

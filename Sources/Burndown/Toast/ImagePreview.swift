@@ -7,8 +7,11 @@ enum ImagePreview {
     static func thumbnail(of url: URL, maxPixel: Int = 96) async -> NSImage? {
         await Task.detached(priority: .utility) {
             if url.pathExtension.lowercased() == "pdf" {
-                guard let page = PDFDocument(url: url)?.page(at: 0) else { return nil }
-                return page.thumbnail(of: NSSize(width: maxPixel, height: maxPixel), for: .mediaBox)
+                // Keep the document alive while the page renders; a page alone is not enough.
+                guard let doc = PDFDocument(url: url), let page = doc.page(at: 0) else { return nil }
+                let image = page.thumbnail(of: NSSize(width: maxPixel, height: maxPixel), for: .mediaBox)
+                withExtendedLifetime(doc) {}
+                return image
             }
             guard let src = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
             let opts: [CFString: Any] = [
