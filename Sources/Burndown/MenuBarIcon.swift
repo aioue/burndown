@@ -1,7 +1,7 @@
 import AppKit
 
 /// Menu bar icons drawn as template images so they adapt to light and dark menu bars.
-/// Normal: a trash can with a flame. Paused: the fire is out and paper piles up on and around the bin.
+/// Normal: a trash can with a flame. Paused: the same icon, dimmed, with a diagonal strike-through.
 enum MenuBarIcon {
     static let normal = make(draw: drawBurning)
     static let paused = make(draw: drawPaused)
@@ -87,23 +87,20 @@ enum MenuBarIcon {
     }
 
     private static func drawPaused() {
-        // Sheets on the ground either side of the bin, the pile standing in it, then lid and body in front.
-        sheet(center: NSPoint(x: 1.9, y: 1.9), size: NSSize(width: 3.8, height: 2.5), degrees: 22)
-        sheet(center: NSPoint(x: 16.2, y: 1.7), size: NSSize(width: 3.6, height: 2.4), degrees: -28)
-        sheet(center: NSPoint(x: 6.6, y: 12.2), size: NSSize(width: 6.0, height: 7.2), degrees: 14)
-        sheet(center: NSPoint(x: 11.4, y: 12.4), size: NSSize(width: 6.0, height: 7.2), degrees: -12)
-        sheet(center: NSPoint(x: 9.0, y: 14.4), size: NSSize(width: 5.8, height: 6.8), degrees: 3)
-        haloed { lid(y: 8.2) }
-        body(top: 7.8)
-    }
+        // The normal icon at reduced opacity, struck through by a bold diagonal with a clear gap either side.
+        NSGraphicsContext.current?.cgContext.setAlpha(0.45)
+        drawBurning()
+        NSGraphicsContext.current?.cgContext.setAlpha(1)
 
-    /// Cuts a thin clear gap around whatever `draw` fills, so it separates from shapes already drawn.
-    private static func haloed(_ draw: () -> Void) {
-        let r = NSBezierPath(roundedRect: NSRect(x: 2.5, y: 8.2, width: 13, height: 1.6), xRadius: 0.8, yRadius: 0.8)
+        let slash = NSBezierPath()
+        slash.move(to: NSPoint(x: 2.2, y: 16.2))
+        slash.line(to: NSPoint(x: 15.8, y: 1.6))
+        slash.lineCapStyle = .round
         NSGraphicsContext.current?.compositingOperation = .clear
-        r.lineWidth = 1.3
-        r.stroke()
+        slash.lineWidth = 4.4
+        slash.stroke()
         NSGraphicsContext.current?.compositingOperation = .sourceOver
-        draw()
+        slash.lineWidth = 1.9
+        slash.stroke()
     }
 }
