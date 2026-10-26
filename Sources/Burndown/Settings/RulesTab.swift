@@ -88,7 +88,7 @@ struct RulesTab: View {
                 .buttonStyle(.borderless)
                 .padding(6)
             }
-            .frame(minWidth: 180, maxWidth: 220)
+            .frame(minWidth: 190, maxWidth: 230)
 
             Group {
                 if let i = model.settings.rules.firstIndex(where: { $0.id == selection }) {
@@ -123,8 +123,11 @@ private struct RuleForm: View {
 
     var body: some View {
         Form {
+            TextField("Name", text: $rule.name)
             HStack {
-                TextField("Name", text: $rule.name)
+                Text("See which files this rule applies to")
+                    .font(.caption).foregroundStyle(.secondary)
+                Spacer()
                 Button("Preview matches") {
                     result = preview()
                     showPreview = true

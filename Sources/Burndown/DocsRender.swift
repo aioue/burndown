@@ -252,12 +252,12 @@ enum DocsRender {
         for (index, tab) in tabs.enumerated() {
             if tab == "rules" {
                 // Rendered taller than the window so the whole rule editor shows without scrolling.
-                let rules = RulesTab(model: model).frame(width: 560, height: 580)
-                try snapshot(window(rules), size: CGSize(width: 560, height: 580), name: "settings-rules", into: out,
+                let rules = RulesTab(model: model).frame(width: 660, height: 640)
+                try snapshot(window(rules), size: CGSize(width: 660, height: 640), name: "settings-rules", into: out,
                              radius: 12) { root in selectRule(2, in: root) }
                 continue
             }
-            try snapshot(window(SettingsView(model: model)), size: CGSize(width: 560, height: 420),
+            try snapshot(window(SettingsView(model: model)), size: CGSize(width: 660, height: 680),
                          name: "settings-\(tab)", into: out, radius: 12,
                          prepare: { root in
                              if let tabView: NSTabView = find(in: root) { tabView.selectTabViewItem(at: index) }

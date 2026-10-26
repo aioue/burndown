@@ -16,7 +16,7 @@ struct SettingsView: View {
             RulesTab(model: model).tabItem { Label("Rules", systemImage: "list.bullet.rectangle") }
             ActivityTab(model: model).tabItem { Label("Activity", systemImage: "clock.arrow.circlepath") }
         }
-        .frame(width: 560, height: 500)
+        .frame(width: 660, height: 680)
     }
 }
 
