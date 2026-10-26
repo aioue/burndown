@@ -30,6 +30,9 @@ final class ToastCenter {
     static let spacing: CGFloat = -8
 
     private var toasts: [Toast] = []
+    /// Double-tap Shift keeps the newest toast's file; set from settings.
+    var shiftKeeps = true
+    private var shiftWatcher: Task<Void, Never>?
 
     private init() {}
 
@@ -41,6 +44,7 @@ final class ToastCenter {
             dismiss(oldest, relayout: false)
         }
         layout(appearing: toast)
+        startShiftWatcher()
         return ToastHandle(setPreview: { [weak toast] image in toast?.preview.image = image })
     }
 
@@ -49,6 +53,38 @@ final class ToastCenter {
         toasts.remove(at: i)
         toast.close()
         if relayout { layout(appearing: nil) }
+        if toasts.isEmpty { shiftWatcher?.cancel(); shiftWatcher = nil }
+    }
+
+    /// Watches for a double tap of Shift, but only while a toast is on screen. The current modifier
+    /// state can be read without any permission, so this polls briefly instead of installing a global
+    /// key monitor (which would need Input Monitoring).
+    private func startShiftWatcher() {
+        guard shiftWatcher == nil else { return }
+        shiftWatcher = Task { @MainActor [weak self] in
+            var shiftDown = false
+            var lastPress: Date?
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(25))
+                guard let self, self.shiftKeeps else { continue }
+                let flags = NSEvent.modifierFlags.intersection(.deviceIndependentFlagsMask)
+                if flags != [] && flags != [.shift] { lastPress = nil; shiftDown = false; continue }
+                let down = flags == [.shift]
+                guard down != shiftDown else { continue }
+                shiftDown = down
+                guard down else { continue }
+                let now = Date()
+                if let last = lastPress, now.timeIntervalSince(last) < 0.45,
+                   // No key was typed between the two taps, so this is not capitalisation.
+                   CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .keyDown)
+                    > now.timeIntervalSince(last) {
+                    lastPress = nil
+                    self.toasts.first?.keepFromShortcut()
+                } else {
+                    lastPress = now
+                }
+            }
+        }
     }
 
     private func layout(appearing: Toast?) {
@@ -130,6 +166,8 @@ private final class Toast {
             panel.close()
         }
     }
+
+    func keepFromShortcut() { finish(model.onKeep) }
 
     private func finish(_ action: (@MainActor () -> Void)?) {
         action?()

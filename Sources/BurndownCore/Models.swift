@@ -101,10 +101,13 @@ public struct ScopeDefaults: Codable, Sendable, Equatable {
 }
 
 public enum SecondButton: String, Codable, Sendable, CaseIterable {
-    case expireNow, snooze, reveal
+    case expireSoon, expireNow, snooze, reveal
 
+    /// Name in the settings picker. The toast label for `.expireSoon` includes the minutes, see
+    /// `BurndownSettings.secondButtonLabel`.
     public var defaultLabel: String {
         switch self {
+        case .expireSoon: "Expire soon"
         case .expireNow: "Expire now"
         case .snooze: "Snooze"
         case .reveal: "Reveal"
@@ -120,13 +123,26 @@ public struct BurndownSettings: Codable, Sendable, Equatable {
     /// 0 = never auto-dismiss.
     public var toastSeconds: Double = 8
     public var keepLabel = "Keep"
-    public var secondButton = SecondButton.expireNow
+    public var secondButton = SecondButton.expireSoon
     public var secondLabel: String?
     public var snoozeDays: Double = 7
+    /// What "Expire soon" shortens a file's remaining time to.
+    public var expireSoonMinutes: Double = 15
+    /// Double-tap Shift while a toast is showing to keep the newest file.
+    public var shiftKeeps = true
     /// Show the screenshot toast when the thumbnail appears rather than when the file is written.
     public var screenshotEarlyToast = true
 
     public init() {}
+
+    /// Text for the toast's second button: the custom label, else one that reflects the action.
+    public var secondButtonLabel: String {
+        if let secondLabel, !secondLabel.isEmpty { return secondLabel }
+        guard secondButton == .expireSoon else { return secondButton.defaultLabel }
+        let m = Int(expireSoonMinutes.rounded())
+        let span = m >= 60 ? (m % 60 == 0 ? "\(m / 60)h" : "\(m / 60)h \(m % 60)m") : "\(m)m"
+        return "Expire in \(span)"
+    }
 
     // Every key is optional so state saved by an older version still loads.
     public init(from decoder: Decoder) throws {
@@ -139,8 +155,12 @@ public struct BurndownSettings: Codable, Sendable, Equatable {
         toastSeconds = try c.decodeIfPresent(Double.self, forKey: .toastSeconds) ?? d.toastSeconds
         keepLabel = try c.decodeIfPresent(String.self, forKey: .keepLabel) ?? d.keepLabel
         secondButton = try c.decodeIfPresent(SecondButton.self, forKey: .secondButton) ?? d.secondButton
+        // State saved before "Expire in N minutes" existed used "Expire now" as its default; move it over.
+        if secondButton == .expireNow, !c.contains(.expireSoonMinutes) { secondButton = .expireSoon }
         secondLabel = try c.decodeIfPresent(String.self, forKey: .secondLabel)
         snoozeDays = try c.decodeIfPresent(Double.self, forKey: .snoozeDays) ?? d.snoozeDays
+        expireSoonMinutes = try c.decodeIfPresent(Double.self, forKey: .expireSoonMinutes) ?? d.expireSoonMinutes
+        shiftKeeps = try c.decodeIfPresent(Bool.self, forKey: .shiftKeeps) ?? d.shiftKeeps
         screenshotEarlyToast = try c.decodeIfPresent(Bool.self, forKey: .screenshotEarlyToast) ?? d.screenshotEarlyToast
     }
 

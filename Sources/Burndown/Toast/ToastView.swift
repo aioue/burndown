@@ -19,7 +19,7 @@ final class ToastPreview {
 struct ToastView: View {
     static let width: CGFloat = 344
     static let radius: CGFloat = 20
-    static let actionWidth: CGFloat = 78
+    static let actionWidth: CGFloat = 92
 
     let model: ToastModel
     let hover: ToastHover
@@ -109,6 +109,7 @@ struct ToastView: View {
             Text(label)
                 .font(.system(size: 13))
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
         }

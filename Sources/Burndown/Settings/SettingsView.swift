@@ -27,6 +27,9 @@ private struct GeneralTab: View {
         Form {
             Toggle("Launch at login", isOn: $model.launchAtLogin)
             Toggle("Pause tracking", isOn: $model.settings.paused)
+            Toggle("Double-tap Shift to keep", isOn: $model.settings.shiftKeeps)
+            Text("While a toast is showing, tapping Shift twice keeps the newest file.")
+                .font(.caption).foregroundStyle(.secondary)
 
             Section("Toast") {
                 Picker("Auto-dismiss", selection: $model.settings.toastSeconds) {
@@ -40,7 +43,11 @@ private struct GeneralTab: View {
                 TextField("Second button label", text: Binding(
                     get: { model.settings.secondLabel ?? "" },
                     set: { model.settings.secondLabel = $0.isEmpty ? nil : $0 }),
-                    prompt: Text(model.settings.secondButton.defaultLabel))
+                    prompt: Text(model.settings.secondButtonLabel))
+                if model.settings.secondButton == .expireSoon {
+                    Stepper("Expire in \(Int(model.settings.expireSoonMinutes)) minutes",
+                            value: $model.settings.expireSoonMinutes, in: 1...720, step: 5)
+                }
                 if model.settings.secondButton == .snooze {
                     Stepper("Snooze by \(Int(model.settings.snoozeDays)) days",
                             value: $model.settings.snoozeDays, in: 1...90)

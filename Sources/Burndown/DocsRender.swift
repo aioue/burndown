@@ -226,7 +226,7 @@ enum DocsRender {
         pdfPreview.image = waitFor { await ImagePreview.thumbnail(of: pdf) }
         pngPreview.image = waitFor { await ImagePreview.thumbnail(of: png) }
         func toast(_ url: URL, _ message: String, _ preview: ToastPreview) -> some View {
-            ToastView(model: ToastModel(fileURL: url, message: message, keepLabel: "Keep", secondLabel: "Expire now",
+            ToastView(model: ToastModel(fileURL: url, message: message, keepLabel: "Keep", secondLabel: "Expire in 15m",
                                         dismissAfter: 8, onKeep: {}, onSecond: {}),
                       hover: ToastHover(), preview: preview, onKeep: {}, onSecond: {}, onClose: {})
                 // The real card is Liquid Glass, which does not render offscreen: stand in a light card.

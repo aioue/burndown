@@ -21,14 +21,14 @@
 <p align="center">
   <img src="docs/images/toast.png" width="424" alt="Two Burndown toasts:
   a screenshot that will be trashed after 3 days and boarding-pass.pdf that
-  will be trashed after 14 days, each with Keep and Expire now buttons">
+  will be trashed after 14 days, each with Keep and Expire in 15m buttons">
 </p>
 
 When a file lands in `~/Downloads`, Burndown shows a small toast in the
 corner of the screen: **boarding-pass.pdf - Will be trashed after 14 days**,
-with **Keep** and **Expire now** buttons. Ignore it and the file goes to the
-Trash in 14 days. Click **Keep** and it stays. It can do the same for macOS
-screenshots, wherever you save them.
+with **Keep** and **Expire in 15m** buttons. Ignore it and the file goes to
+the Trash in 14 days. Click **Keep** (or double-tap Shift) and it stays. It
+can do the same for macOS screenshots, wherever you save them.
 
 It is a native Swift app (SwiftUI and AppKit, no dependencies), event-driven
 rather than polling, and it makes no network connections.
@@ -59,8 +59,11 @@ rather than polling, and it makes no network connections.
   that went to the Trash.
 - **Pause** stops tracking and expiry; the menu bar icon changes so you can
   see it is paused.
+- **Double-tap Shift** while a toast is showing to keep the newest file,
+  without reaching for the mouse. It can be turned off in Settings > General.
 - **Customisable toast**: auto-dismiss time, button labels, and a second
-  button that can be Expire now, Snooze (by a number of days) or Reveal.
+  button that can be Expire in N minutes (the default, 15), Expire now,
+  Snooze (by a number of days) or Reveal.
 - **Launch at login**, registered automatically the first time it runs from
   `/Applications`, and easy to turn off.
 
@@ -231,8 +234,8 @@ macOS writes a screenshot to disk only when its floating thumbnail goes away,
 about 5 seconds after the capture. With **Show it as soon as the thumbnail
 appears** on, Burndown watches the system log for the capture event and shows
 the toast straight away with a camera placeholder, then swaps in the real
-preview when the file lands. Keep or Expire now pressed before then is
-applied as soon as the file exists.
+preview when the file lands. Keep or the second button pressed before then
+is applied as soon as the file exists.
 
 ## Privacy
 

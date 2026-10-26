@@ -147,6 +147,26 @@ import Testing
         #expect(s.screenshotEarlyToast)
         #expect(s.downloads.lifetime == .days(14))
     }
+
+    @Test func oldExpireNowDefaultMovesToExpireSoon() throws {
+        let old = try JSONDecoder().decode(BurndownSettings.self, from: Data(#"{"secondButton":"expireNow"}"#.utf8))
+        #expect(old.secondButton == .expireSoon)
+        let chosen = try JSONDecoder().decode(
+            BurndownSettings.self, from: Data(#"{"secondButton":"expireNow","expireSoonMinutes":15}"#.utf8))
+        #expect(chosen.secondButton == .expireNow)
+    }
+
+    @Test func secondButtonLabels() {
+        var s = BurndownSettings()
+        #expect(s.secondButtonLabel == "Expire in 15m")
+        s.expireSoonMinutes = 90
+        #expect(s.secondButtonLabel == "Expire in 1h 30m")
+        s.secondLabel = "Bin it"
+        #expect(s.secondButtonLabel == "Bin it")
+        s.secondLabel = nil
+        s.secondButton = .snooze
+        #expect(s.secondButtonLabel == "Snooze")
+    }
 }
 
 @Suite struct PutBackTests {

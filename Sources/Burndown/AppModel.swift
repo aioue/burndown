@@ -12,6 +12,7 @@ final class AppModel {
         didSet {
             persist()
             let old = oldValue.settings, new = state.settings
+            ToastCenter.shared.shiftKeeps = new.shiftKeeps
             if old.screenshots.enabled != new.screenshots.enabled
                 || old.screenshotEarlyToast != new.screenshotEarlyToast { syncScreenshots() }
             if old.paused && !new.paused { expireDue() }
@@ -58,6 +59,7 @@ final class AppModel {
     }
 
     func start() {
+        ToastCenter.shared.shiftKeeps = state.settings.shiftKeeps
         let watcher = DownloadsWatcher(directory: downloadsDir) { [weak self] url in
             self?.track(url, scope: .download)
         }
@@ -128,7 +130,7 @@ final class AppModel {
             placeholder: "📸",
             message: "\(name) will be \(action.pastTense) after \(life.phrase)",
             keepLabel: s.keepLabel,
-            secondLabel: s.secondLabel ?? s.secondButton.defaultLabel,
+            secondLabel: s.secondButtonLabel,
             dismissAfter: s.toastSeconds,
             onKeep: { [weak self] in self?.resolveShot(id, .keep) },
             onSecond: { [weak self] in self?.resolveShot(id, .second) }))
@@ -152,7 +154,7 @@ final class AppModel {
 
     private func showToast(for item: TrackedItem, lifetime: Lifetime) {
         let s = state.settings
-        let secondLabel = s.secondLabel ?? s.secondButton.defaultLabel
+        let secondLabel = s.secondButtonLabel
         let url = URL(fileURLWithPath: item.path)
         let handle = ToastCenter.shared.show(ToastModel(
             fileURL: url,
@@ -179,7 +181,7 @@ final class AppModel {
             fileURL: file,
             message: "\(file.lastPathComponent) will be \(d.action.pastTense) after \(d.lifetime.phrase)",
             keepLabel: s.keepLabel,
-            secondLabel: s.secondLabel ?? s.secondButton.defaultLabel,
+            secondLabel: s.secondButtonLabel,
             dismissAfter: s.toastSeconds,
             onKeep: {},
             onSecond: {}))
@@ -199,6 +201,7 @@ final class AppModel {
 
     func secondAction(_ id: UUID) {
         switch state.settings.secondButton {
+        case .expireSoon: expireSoon(id)
         case .expireNow: expireNow(id)
         case .snooze: snooze(id)
         case .reveal: reveal(id)
@@ -217,6 +220,14 @@ final class AppModel {
             guard alert.runModal() == .alertFirstButtonReturn else { return }
         }
         process(item, reason: "expired now")
+    }
+
+    /// Shortens the file's remaining time to the configured number of minutes (never lengthens it).
+    func expireSoon(_ id: UUID) {
+        guard let i = state.items.firstIndex(where: { $0.id == id }) else { return }
+        let soon = Date().addingTimeInterval(state.settings.expireSoonMinutes * 60 / Self.timeScale)
+        state.items[i].due = min(state.items[i].due ?? .distantFuture, soon)
+        rearm()
     }
 
     func snooze(_ id: UUID) {
