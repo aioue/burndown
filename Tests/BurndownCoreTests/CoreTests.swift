@@ -100,7 +100,7 @@ import Testing
         let f = dl.appendingPathComponent("a.txt")
         try "x".write(to: f, atomically: true, encoding: .utf8)
         let item = TrackedItem(path: f.path, scope: .download, due: nil, action: .wipe)
-        #expect(Expirer.expire(item, downloadsDir: dl) == .expired)
+        #expect(Expirer.expire(item, downloadsDir: dl) == .expired(trashedAt: nil))
         #expect(!FileManager.default.fileExists(atPath: f.path))
     }
 
@@ -134,7 +134,7 @@ import Testing
         let f = other.appendingPathComponent("shot.png")
         try "x".write(to: f, atomically: true, encoding: .utf8)
         let item = TrackedItem(path: f.path, scope: .screenshot, due: nil, action: .wipe)
-        #expect(Expirer.expire(item, downloadsDir: dl) == .expired)
+        #expect(Expirer.expire(item, downloadsDir: dl) == .expired(trashedAt: nil))
     }
 }
 
@@ -146,5 +146,28 @@ import Testing
         #expect(s.keepLabel == "Hold")
         #expect(s.screenshotEarlyToast)
         #expect(s.downloads.lifetime == .days(14))
+    }
+}
+
+@Suite struct PutBackTests {
+    @Test func putsBackWithFreeNameAndKeepTag() throws {
+        let fm = FileManager.default
+        let dir = fm.temporaryDirectory.appendingPathComponent("expire-\(UUID())")
+        try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        let trashed = dir.appendingPathComponent("in-trash.txt")
+        try "x".write(to: trashed, atomically: true, encoding: .utf8)
+        let original = dir.appendingPathComponent("a.txt")
+        try "y".write(to: original, atomically: true, encoding: .utf8)   // name already taken
+        let entry = LogEntry(name: "a.txt", action: .trash, reason: "expired",
+                             originalPath: original.path, trashedPath: trashed.path)
+        #expect(entry.canRestore)
+        let back = try Expirer.putBack(entry)
+        #expect(back.lastPathComponent == "a 2.txt")
+        #expect(FileMeta.hasKeepTag(back))
+        #expect(!fm.fileExists(atPath: trashed.path))
+    }
+
+    @Test func wipedEntriesCannotBeRestored() {
+        #expect(!LogEntry(name: "a", action: .wipe, reason: "x", originalPath: "/a", trashedPath: nil).canRestore)
     }
 }

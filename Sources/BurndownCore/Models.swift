@@ -65,13 +65,24 @@ public struct LogEntry: Codable, Sendable, Identifiable, Equatable {
     public var name: String
     public var action: Action
     public var reason: String
+    /// Where the file lived, and (for Trash) where it is now, so it can be put back.
+    public var originalPath: String?
+    public var trashedPath: String?
+    public var restored: Bool?
 
-    public init(id: UUID = UUID(), date: Date = Date(), name: String, action: Action, reason: String) {
+    public init(id: UUID = UUID(), date: Date = Date(), name: String, action: Action, reason: String,
+                originalPath: String? = nil, trashedPath: String? = nil) {
         self.id = id
         self.date = date
         self.name = name
         self.action = action
         self.reason = reason
+        self.originalPath = originalPath
+        self.trashedPath = trashedPath
+    }
+
+    public var canRestore: Bool {
+        action == .trash && restored != true && originalPath != nil && trashedPath != nil
     }
 }
 

@@ -92,7 +92,7 @@ struct RulesTab: View {
 
             Group {
                 if let i = model.settings.rules.firstIndex(where: { $0.id == selection }) {
-                    RuleForm(rule: $model.settings.rules[i])
+                    RuleForm(rule: $model.settings.rules[i], preview: { model.previewMatches(for: model.settings.rules[i].id) })
                 } else {
                     VStack(spacing: 6) {
                         Text("Rules run top to bottom; the first match wins.")
@@ -117,10 +117,20 @@ struct RulesTab: View {
 
 private struct RuleForm: View {
     @Binding var rule: Rule
+    let preview: () -> (names: [String], total: Int)
+    @State private var showPreview = false
+    @State private var result: (names: [String], total: Int) = ([], 0)
 
     var body: some View {
         Form {
-            TextField("Name", text: $rule.name)
+            HStack {
+                TextField("Name", text: $rule.name)
+                Button("Preview matches") {
+                    result = preview()
+                    showPreview = true
+                }
+                .popover(isPresented: $showPreview, arrowEdge: .bottom) { previewList }
+            }
             Section("When all of these match") {
                 Picker("Kind", selection: $rule.scopeFilter) {
                     Text("Any").tag(Scope?.none)
@@ -150,5 +160,21 @@ private struct RuleForm: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    private var previewList: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("\(result.names.count) of \(result.total) files in Downloads")
+                .font(.headline)
+            Text("This rule would apply to these (first match wins). Nothing has been changed.")
+                .font(.caption).foregroundStyle(.secondary)
+            if result.names.isEmpty {
+                Text("No matches").foregroundStyle(.secondary).padding(.vertical, 8)
+            } else {
+                List(result.names.prefix(60), id: \.self) { Text($0).lineLimit(1).truncationMode(.middle) }
+                    .frame(width: 320, height: min(CGFloat(result.names.count) * 24 + 8, 260))
+            }
+        }
+        .padding(12)
     }
 }

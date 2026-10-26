@@ -25,7 +25,7 @@ struct MenuContent: View {
                 Menu("Activity") {
                     if model.state.log.isEmpty { Text("Nothing expired yet") }
                     ForEach(model.state.log.prefix(15)) { e in
-                        Text("\(e.name) - \(e.action.pastTense) \(e.date.formatted(.relative(presentation: .named)))")
+                        activityRow(e)
                     }
                 }
                 .menuStyle(.borderlessButton)
@@ -74,16 +74,34 @@ struct MenuContent: View {
         return Menu("Tracked files (\(items.count))") {
             if items.isEmpty { Text("No files tracked") }
             ForEach(shown) { item in
-                Menu("\(item.name)  \(Self.when(item))") {
+                Menu {
                     Button("Keep") { model.keep(item.id) }
                     Button("Expire now") { model.expireNow(item.id) }
                     Button("Reveal in Finder") { model.reveal(item.id) }
+                } label: {
+                    Label { Text("\(item.name)  \(Self.when(item))") } icon: {
+                        Image(nsImage: FileIcon.small(path: item.path))
+                    }
                 }
             }
             if items.count > shown.count { Text("+ \(items.count - shown.count) more") }
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
+    }
+
+    @ViewBuilder private func activityRow(_ e: LogEntry) -> some View {
+        let label = Label {
+            Text("\(e.name) - \(e.restored == true ? "put back" : e.action.pastTense) "
+                + e.date.formatted(.relative(presentation: .named)))
+        } icon: {
+            Image(nsImage: FileIcon.small(path: e.originalPath ?? e.name))
+        }
+        if e.canRestore {
+            Menu { Button("Put back") { model.putBack(e.id) } } label: { label }
+        } else {
+            label
+        }
     }
 
     private static func when(_ item: TrackedItem) -> String {

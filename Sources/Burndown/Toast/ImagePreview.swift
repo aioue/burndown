@@ -1,10 +1,15 @@
 import AppKit
 import ImageIO
+import PDFKit
 
 enum ImagePreview {
-    /// Small decoded thumbnail via ImageIO (no Quick Look service round trip). Nil if the file is not an image.
+    /// Small decoded thumbnail of an image or the first page of a PDF, made in memory. Nil for anything else.
     static func thumbnail(of url: URL, maxPixel: Int = 96) async -> NSImage? {
         await Task.detached(priority: .utility) {
+            if url.pathExtension.lowercased() == "pdf" {
+                guard let page = PDFDocument(url: url)?.page(at: 0) else { return nil }
+                return page.thumbnail(of: NSSize(width: maxPixel, height: maxPixel), for: .mediaBox)
+            }
             guard let src = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
             let opts: [CFString: Any] = [
                 kCGImageSourceCreateThumbnailFromImageAlways: true,

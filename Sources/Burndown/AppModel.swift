@@ -150,7 +150,7 @@ final class AppModel {
         let s = state.settings
         let secondLabel = s.secondLabel ?? s.secondButton.defaultLabel
         let url = URL(fileURLWithPath: item.path)
-        ToastCenter.shared.show(ToastModel(
+        let handle = ToastCenter.shared.show(ToastModel(
             fileURL: url,
             message: "\(item.name) will be \(item.action.pastTense) after \(lifetime.phrase)",
             keepLabel: s.keepLabel,
@@ -158,6 +158,9 @@ final class AppModel {
             dismissAfter: s.toastSeconds,
             onKeep: { [weak self] in self?.keep(item.id) },
             onSecond: { [weak self] in self?.secondAction(item.id) }))
+        Task {
+            if let image = await ImagePreview.thumbnail(of: url) { handle.setPreview(image) }
+        }
     }
 
     /// Settings chip: shows a toast with the current labels and timings, without tracking anything.
@@ -223,6 +226,36 @@ final class AppModel {
         NSWorkspace.shared.activateFileViewerSelecting([FileMeta.resolve(path: item.path, bookmark: item.bookmark)])
     }
 
+    /// Activity menu: move a trashed file back where it came from.
+    func putBack(_ id: UUID) {
+        guard let i = state.log.firstIndex(where: { $0.id == id }), state.log[i].canRestore else { return }
+        do {
+            let url = try Expirer.putBack(state.log[i])
+            state.log[i].restored = true
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+        } catch {
+            NSLog("Burndown: put back failed: \(error.localizedDescription)")
+            NSSound.beep()
+        }
+    }
+
+    /// Rules tab dry run: the files now in Downloads for which this rule would be the one that applies
+    /// (first match wins), treating the rule as enabled. Nothing is changed.
+    func previewMatches(for ruleID: UUID) -> (names: [String], total: Int) {
+        let urls = (try? FileManager.default.contentsOfDirectory(at: downloadsDir, includingPropertiesForKeys: nil)) ?? []
+        let candidates = urls.filter { !PartialFilter.shouldSkip(name: $0.lastPathComponent) }
+        var hits: [String] = []
+        for url in candidates {
+            let info = FileMeta.info(for: url, scope: .download)
+            var winner: UUID?
+            for rule in state.settings.rules where rule.enabled || rule.id == ruleID {
+                if rule.conditions.allSatisfy({ $0.matches(info) }) { winner = rule.id; break }
+            }
+            if winner == ruleID { hits.append(url.lastPathComponent) }
+        }
+        return (hits.sorted(), candidates.count)
+    }
+
     func remove(_ id: UUID) {
         state.items.removeAll { $0.id == id }
         rearm()
@@ -239,8 +272,10 @@ final class AppModel {
 
     private func process(_ item: TrackedItem, reason: String) {
         switch Expirer.expire(item, downloadsDir: downloadsDir) {
-        case .expired:
-            state.appendLog(LogEntry(name: item.name, action: item.action, reason: reason))
+        case .expired(let trashedAt):
+            let was = FileMeta.resolve(path: item.path, bookmark: item.bookmark).path
+            state.appendLog(LogEntry(name: item.name, action: item.action, reason: reason,
+                                     originalPath: was, trashedPath: trashedAt?.path))
             remove(item.id)
         case .untrack:
             remove(item.id)
