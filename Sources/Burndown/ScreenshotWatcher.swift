@@ -9,7 +9,6 @@ final class ScreenshotWatcher {
     private let onArrival: @MainActor (URL) -> Void
     private var query: NSMetadataQuery?
     private var starting = false
-    private var folderWatcher: DownloadsWatcher?
     private var observers: [NSObjectProtocol] = []
     /// Reported paths and file identities, so a later rename or move is not a new arrival.
     private var reported: Set<String> = []
@@ -64,30 +63,10 @@ final class ScreenshotWatcher {
         ]
         query = q
         q.start()
-
-        // Spotlight can lag behind the file being written, so also watch the screenshot folder directly.
-        // Screenshots carry a kMDItemIsScreenCapture xattr from the moment they are written.
-        let folder = URL(fileURLWithPath: Self.screenshotFolder)
-        let fw = DownloadsWatcher(directory: folder) { [weak self] url in
-            guard let self, Self.isScreenCapture(url),
-                  let created = try? url.resourceValues(forKeys: [.creationDateKey]).creationDate
-            else { return }
-            self.report([(url.path, created)])
-        }
-        fw.start()
-        folderWatcher = fw
-    }
-
-    private nonisolated static func isScreenCapture(_ url: URL) -> Bool {
-        url.withUnsafeFileSystemRepresentation { p in
-            p.map { getxattr($0, "com.apple.metadata:kMDItemIsScreenCapture", nil, 0, 0, 0) >= 0 } ?? false
-        }
     }
 
     func stop() {
         starting = false
-        folderWatcher?.stop()
-        folderWatcher = nil
         guard let q = query else { return }
         q.stop()
         for o in observers { NotificationCenter.default.removeObserver(o) }
