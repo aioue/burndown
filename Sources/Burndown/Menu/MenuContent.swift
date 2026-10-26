@@ -4,6 +4,14 @@ import SwiftUI
 struct MenuContent: View {
     @Bindable var model: AppModel
     @Environment(\.openSettings) private var openSettings
+    @State private var page: Page
+
+    enum Page { case main, tracked, activity }
+
+    init(model: AppModel, page: Page = .main) {
+        self.model = model
+        _page = State(initialValue: page)
+    }
 
     private static let presets: [(String, Lifetime)] = [
         ("1 hour", .hours(1)), ("12 hours", .hours(12)), ("1 day", .days(1)), ("3 days", .days(3)),
@@ -12,6 +20,21 @@ struct MenuContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            switch page {
+            case .main: mainPage
+            case .tracked: listPage("Tracked files", count: model.state.items.count, trackedRows)
+            case .activity: listPage("Activity", count: min(model.state.log.count, 50), activityRows)
+            }
+        }
+        .padding(12)
+        .frame(width: 340)
+        .onDisappear { page = .main }
+    }
+
+    // MARK: Main page
+
+    private var mainPage: some View {
+        Group {
             Toggle("Pause tracking", isOn: $model.settings.paused)
 
             Divider()
@@ -20,16 +43,9 @@ struct MenuContent: View {
 
             Divider()
             HStack {
-                trackedList
+                pageLink("Tracked files (\(model.state.items.count))", .tracked)
                 Spacer()
-                Menu("Activity") {
-                    if model.state.log.isEmpty { Text("Nothing expired yet") }
-                    ForEach(model.state.log.prefix(15)) { e in
-                        activityRow(e)
-                    }
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
+                pageLink("Activity", .activity)
             }
 
             Divider()
@@ -43,8 +59,16 @@ struct MenuContent: View {
                 Button("Quit") { NSApp.terminate(nil) }
             }
         }
-        .padding(12)
-        .frame(width: 340)
+    }
+
+    private func pageLink(_ title: String, _ target: Page) -> some View {
+        Button { page = target } label: {
+            HStack(spacing: 3) {
+                Text(title)
+                Image(systemName: "chevron.right").font(.system(size: 9, weight: .semibold))
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     private func scopeRow(_ title: String, _ d: Binding<ScopeDefaults>) -> some View {
@@ -67,46 +91,84 @@ struct MenuContent: View {
         }
     }
 
-    /// Tracked files live in a submenu so the popover stays short; each file has its own actions submenu.
-    private var trackedList: some View {
-        let items = model.state.items.sorted { ($0.due ?? .distantFuture) < ($1.due ?? .distantFuture) }
-        let shown = items.prefix(25)
-        return Menu("Tracked files (\(items.count))") {
-            if items.isEmpty { Text("No files tracked") }
-            ForEach(shown) { item in
-                Menu {
-                    Button("Keep") { model.keep(item.id) }
-                    Button("Expire now") { model.expireNow(item.id) }
-                    Button("Reveal in Finder") { model.reveal(item.id) }
-                } label: {
-                    Label { Text("\(item.name)  \(Self.when(item))") } icon: {
-                        Image(nsImage: FileIcon.small(path: item.path))
+    // MARK: List pages
+
+    private func listPage(_ title: String, count: Int, _ rows: some View) -> some View {
+        Group {
+            HStack {
+                Button { page = .main } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "chevron.left").font(.system(size: 9, weight: .semibold))
+                        Text("Back")
                     }
                 }
+                .buttonStyle(.plain)
+                Spacer()
+                Text(title).font(.headline)
+                Spacer()
+                Text("Back").hidden() // keeps the title centred
             }
-            if items.count > shown.count { Text("+ \(items.count - shown.count) more") }
+            Divider()
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 8) { rows }
+            }
+            // A ScrollView has no natural height, so size it to its rows up to a cap.
+            .frame(height: min(max(CGFloat(count), 1) * 36, 320))
         }
-        .menuStyle(.borderlessButton)
-        .fixedSize()
     }
 
-    @ViewBuilder private func activityRow(_ e: LogEntry) -> some View {
-        let label = Label {
-            Text("\(e.name) - \(e.restored == true ? "put back" : e.action.pastTense) "
-                + e.date.formatted(.relative(presentation: .named)))
-        } icon: {
-            Image(nsImage: FileIcon.small(path: e.originalPath ?? e.name))
+    @ViewBuilder private var trackedRows: some View {
+        let items = model.state.items.sorted { ($0.due ?? .distantFuture) < ($1.due ?? .distantFuture) }
+        if items.isEmpty { Text("No files tracked").foregroundStyle(.secondary) }
+        ForEach(items) { item in
+            HStack(spacing: 8) {
+                FileThumb(previewPath: item.path, iconPath: item.path)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(item.name).lineLimit(1).truncationMode(.middle)
+                    Text(Self.when(item)).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 4)
+                iconButton("checkmark.circle", "Keep") { model.keep(item.id) }
+                iconButton("flame", "Expire now") { model.expireNow(item.id) }
+                iconButton("magnifyingglass", "Reveal in Finder") { model.reveal(item.id) }
+            }
         }
-        if e.canRestore {
-            Menu { Button("Put back") { model.putBack(e.id) } } label: { label }
-        } else {
-            label
+    }
+
+    @ViewBuilder private var activityRows: some View {
+        if model.state.log.isEmpty { Text("Nothing has expired yet").foregroundStyle(.secondary) }
+        ForEach(model.state.log.prefix(50)) { e in
+            HStack(spacing: 8) {
+                FileThumb(previewPath: e.restored == true ? e.originalPath : e.trashedPath,
+                          iconPath: e.originalPath ?? e.name)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(e.name).lineLimit(1).truncationMode(.middle)
+                    Text("\(e.restored == true ? "put back" : e.action.pastTense) "
+                        + e.date.formatted(.relative(presentation: .named)))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 4)
+                if e.canRestore {
+                    iconButton("arrow.uturn.backward.circle", "Restore from Trash") { model.putBack(e.id) }
+                }
+            }
         }
+    }
+
+    private func iconButton(_ symbol: String, _ help: String, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 14))
+                .frame(width: 22, height: 22)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(help)
     }
 
     private static func when(_ item: TrackedItem) -> String {
-        guard let due = item.due else { return "(no expiry)" }
-        let verb = item.action == .wipe ? "wipe" : "trash"
-        return "(\(verb) \(due.formatted(.relative(presentation: .named))))"
+        guard let due = item.due else { return "No expiry" }
+        let verb = item.action == .wipe ? "Wipe" : "Trash"
+        return "\(verb) \(due.formatted(.relative(presentation: .named)))"
     }
 }

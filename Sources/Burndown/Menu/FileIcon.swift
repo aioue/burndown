@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 
 enum FileIcon {
     /// 16 pt Finder icon for a menu item: the file's own icon if it still exists, else the icon for its type.
-    static func small(path: String) -> NSImage {
+    static func small(path: String, size: CGFloat = 16) -> NSImage {
         let ws = NSWorkspace.shared
         let icon: NSImage
         if FileManager.default.fileExists(atPath: path) {
@@ -13,7 +13,7 @@ enum FileIcon {
             icon = ws.icon(for: type)
         }
         let small = (icon.copy() as? NSImage) ?? icon
-        small.size = NSSize(width: 16, height: 16)
+        small.size = NSSize(width: size, height: size)
         return small
     }
 }

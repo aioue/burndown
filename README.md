@@ -94,7 +94,19 @@ settings: Track screenshots, Expire after 3 days, When expired Move to Trash,
 Show a toast for each new file, Show it as soon as the thumbnail appears">
 
 <details>
-<summary>More: General, Downloads and Activity tabs, menu bar icons</summary>
+<summary>More: menu pages, General, Downloads and Activity tabs, icons</summary>
+
+Tracked files: a preview for images and PDFs, otherwise the Finder icon, and
+Keep, Expire now and Reveal in Finder as buttons on each row.
+
+<img src="docs/images/menu-tracked.png" width="404" alt="Tracked files page:
+seven files with their expiry times and Keep, Expire now and Reveal buttons">
+
+Activity: what expired, with a button to restore anything that went to the
+Trash.
+
+<img src="docs/images/menu-activity.png" width="404" alt="Activity page: seven
+expired files, each trashed one with a restore button">
 
 <img src="docs/images/settings-general.png" width="560" alt="General
 settings: Launch at login, Pause tracking, and toast options for auto-dismiss
