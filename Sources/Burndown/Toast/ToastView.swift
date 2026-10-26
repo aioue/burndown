@@ -11,7 +11,7 @@ final class ToastHover {
 
 /// Laid out to match a macOS alert-style notification. Measured from a Tahoe screenshot (2x):
 /// 344 x 72 pt card, ~20 pt corners, 32 pt icon 13 pt from the edge, text 13 pt (title semibold, body
-/// regular, 16 pt line pitch) starting 58 pt in, timestamp right-aligned.
+/// regular, 16 pt line pitch) starting 58 pt in.
 /// Lets a toast's icon be swapped for a real preview after it is already on screen.
 @MainActor @Observable
 final class ToastPreview {
@@ -35,16 +35,10 @@ struct ToastView: View {
             HStack(alignment: .top, spacing: 13) {
                 icon
                 VStack(alignment: .leading, spacing: 0) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(title)
-                            .font(.system(size: 13, weight: .semibold))
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                        Spacer(minLength: 0)
-                        Text("now")
-                            .font(.system(size: 13))
-                            .foregroundStyle(.secondary)
-                    }
+                    Text(title)
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                     Text(bodyText)
                         .font(.system(size: 13))
                         .lineLimit(2)
@@ -69,7 +63,6 @@ struct ToastView: View {
         }
         .frame(width: Self.width)
         .frame(minHeight: 60)
-        .clipShape(RoundedRectangle(cornerRadius: Self.radius))
         .glassEffect(.regular, in: .rect(cornerRadius: Self.radius))
         .overlay(alignment: .topLeading) {
             if hover.isHovered {
@@ -113,12 +106,16 @@ struct ToastView: View {
                 .font(.system(size: 13))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
+                .scaleEffect(flash ? 1.12 : 1)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
         }
         .buttonStyle(ToastActionStyle())
-        .background(flash ? Color.accentColor.opacity(0.4) : .clear)
-        .scaleEffect(flash ? 1.06 : 1)
+        // The Keep cell is the card's top-right corner, so the flash follows its curve (no clipping, which
+        // changes how the glass renders the text).
+        .background {
+            if flash { UnevenRoundedRectangle(topTrailingRadius: Self.radius).fill(Color.accentColor.opacity(0.4)) }
+        }
         .animation(.easeOut(duration: 0.12), value: flash)
         .overlay { if flash { SparkleBurst() } }
     }
