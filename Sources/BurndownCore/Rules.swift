@@ -83,7 +83,7 @@ public struct Rule: Codable, Sendable, Identifiable, Equatable {
 public enum RuleEngine {
     /// First enabled rule whose conditions all match wins; otherwise the scope default applies.
     /// Returns nil when the scope itself is disabled.
-    public static func evaluate(_ file: FileInfo, settings: ExpireSettings) -> Outcome? {
+    public static func evaluate(_ file: FileInfo, settings: BurndownSettings) -> Outcome? {
         let d = settings.defaults(for: file.scope)
         guard d.enabled else { return nil }
         for rule in settings.rules where rule.enabled {

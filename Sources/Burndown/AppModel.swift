@@ -1,12 +1,12 @@
 import AppKit
-import ExpireCore
+import BurndownCore
 import Observation
 import ServiceManagement
 
 @MainActor @Observable
 final class AppModel {
-    /// Debug only: EXPIRE_TIME_SCALE=3600 turns hours into seconds so expiry can be watched live.
-    static let timeScale = Double(ProcessInfo.processInfo.environment["EXPIRE_TIME_SCALE"] ?? "") ?? 1
+    /// Debug only: BURNDOWN_TIME_SCALE=3600 turns hours into seconds so expiry can be watched live.
+    static let timeScale = Double(ProcessInfo.processInfo.environment["BURNDOWN_TIME_SCALE"] ?? "") ?? 1
 
     var state: PersistedState {
         didSet {
@@ -23,7 +23,7 @@ final class AppModel {
     private var timerTask: Task<Void, Never>?
     private var wakeObserver: (any NSObjectProtocol)?
 
-    var settings: ExpireSettings {
+    var settings: BurndownSettings {
         get { state.settings }
         set { state.settings = newValue }
     }
@@ -34,7 +34,7 @@ final class AppModel {
             do {
                 if newValue { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
             } catch {
-                NSLog("Expire: launch at login failed: \(error.localizedDescription)")
+                NSLog("Burndown: launch at login failed: \(error.localizedDescription)")
             }
         }
     }
@@ -100,6 +100,24 @@ final class AppModel {
             onSecond: { [weak self] in self?.secondAction(item.id) }))
     }
 
+    /// Settings chip: shows a toast with the current labels and timings, without tracking anything.
+    func sendTestToast() {
+        let s = state.settings
+        let d = s.downloads
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("Test download.pdf")
+        if !FileManager.default.fileExists(atPath: file.path) {
+            FileManager.default.createFile(atPath: file.path, contents: Data())
+        }
+        ToastCenter.shared.show(ToastModel(
+            fileURL: file,
+            message: "\(file.lastPathComponent) will be \(d.action.pastTense) after \(d.lifetime.phrase)",
+            keepLabel: s.keepLabel,
+            secondLabel: s.secondLabel ?? s.secondButton.defaultLabel,
+            dismissAfter: s.toastSeconds,
+            onKeep: {},
+            onSecond: {}))
+    }
+
     // MARK: Actions
 
     func keep(_ id: UUID) {
@@ -107,7 +125,7 @@ final class AppModel {
         do {
             try FileMeta.markKept(FileMeta.resolve(path: item.path, bookmark: item.bookmark))
         } catch {
-            NSLog("Expire: could not tag \(item.name): \(error.localizedDescription)")
+            NSLog("Burndown: could not tag \(item.name): \(error.localizedDescription)")
         }
         remove(id)
     }
@@ -167,7 +185,7 @@ final class AppModel {
         case .untrack:
             remove(item.id)
         case .failed(let message):
-            NSLog("Expire: \(item.name): \(message)")
+            NSLog("Burndown: \(item.name): \(message)")
             if let i = state.items.firstIndex(where: { $0.id == item.id }) {
                 // Retry in an hour rather than hammering a file we cannot remove.
                 state.items[i].due = Date().addingTimeInterval(3_600)
@@ -200,6 +218,6 @@ final class AppModel {
     }
 
     private func persist() {
-        do { try Store.save(state) } catch { NSLog("Expire: save failed: \(error.localizedDescription)") }
+        do { try Store.save(state) } catch { NSLog("Burndown: save failed: \(error.localizedDescription)") }
     }
 }

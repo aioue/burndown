@@ -1,4 +1,4 @@
-import ExpireCore
+import BurndownCore
 import SwiftUI
 
 struct SettingsView: View {
@@ -47,6 +47,19 @@ private struct GeneralTab: View {
             }
         }
         .formStyle(.grouped)
+        .overlay(alignment: .bottomTrailing) {
+            Button { model.sendTestToast() } label: {
+                Image(systemName: "bell.badge")
+                    .font(.system(size: 14, weight: .medium))
+                    .frame(width: 32, height: 32)
+                    .background(.regularMaterial, in: Circle())
+                    .overlay(Circle().strokeBorder(.separator))
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .help("Show a test toast")
+            .padding(14)
+        }
     }
 }
 

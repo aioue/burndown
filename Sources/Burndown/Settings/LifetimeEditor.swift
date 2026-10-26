@@ -1,4 +1,4 @@
-import ExpireCore
+import BurndownCore
 import SwiftUI
 
 /// Value + unit (hours / days / never) editor for a `Lifetime`.

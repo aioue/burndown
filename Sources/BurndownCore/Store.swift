@@ -1,7 +1,7 @@
 import Foundation
 
 public struct PersistedState: Codable, Sendable, Equatable {
-    public var settings = ExpireSettings()
+    public var settings = BurndownSettings()
     public var items: [TrackedItem] = []
     public var log: [LogEntry] = []
     /// Screenshots are only picked up if created after this moment.
@@ -18,7 +18,7 @@ public struct PersistedState: Codable, Sendable, Equatable {
 public enum Store {
     public static var defaultURL: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Expire/state.json")
+            .appendingPathComponent("Burndown/state.json")
     }
 
     public static func load(from url: URL = defaultURL) -> PersistedState {

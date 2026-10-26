@@ -1,4 +1,4 @@
-# Expire
+# Burndown
 
 A small macOS menu bar app that stops your Downloads folder silting up. Every new download gets a
 lifetime; when it runs out the file is moved to the Trash (or wiped). The menu bar icon is a trash can on fire.
@@ -17,7 +17,7 @@ Requires macOS 26.
 
 ```sh
 make test      # unit tests
-make run       # build, ad-hoc sign, launch build/Expire.app
+make run       # build, ad-hoc sign, launch build/Burndown.app
 make install   # copy to /Applications
 ```
 
@@ -32,9 +32,9 @@ make install   # copy to /Applications
 - Screenshot tracking is off by default and only picks up screenshots taken after it is enabled.
 - Defaults: downloads 14 days then Trash; screenshots untracked.
 
-State lives in `~/Library/Application Support/Expire/state.json`.
+State lives in `~/Library/Application Support/Burndown/state.json`.
 
 ## Debugging
 
-`EXPIRE_TIME_SCALE=3600 build/Expire.app/Contents/MacOS/Expire` makes hours pass as seconds so you can
+`BURNDOWN_TIME_SCALE=3600 build/Burndown.app/Contents/MacOS/Burndown` makes hours pass as seconds so you can
 watch real expiry.

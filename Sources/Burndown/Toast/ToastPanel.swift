@@ -45,20 +45,26 @@ final class ToastCenter {
         guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
         let area = screen.visibleFrame
         var top = area.maxY - Self.margin
+        var targets: [(Toast, NSRect)] = []
+        for t in toasts {
+            let size = t.panel.frame.size
+            let frame = NSRect(x: area.maxX - Self.margin - size.width, y: top - size.height,
+                               width: size.width, height: size.height)
+            top = frame.minY - Self.spacing
+            targets.append((t, frame))
+        }
+        // Park the new toast just off the right screen edge before any animation starts, so it slides
+        // in like a system notification instead of animating from wherever the window was created.
+        if let (t, frame) = targets.first(where: { $0.0 === appearing }) {
+            t.panel.alphaValue = 0
+            t.panel.setFrame(frame.offsetBy(dx: frame.width + Self.margin, dy: 0), display: false)
+            t.panel.orderFrontRegardless()
+        }
         NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.2
-            ctx.allowsImplicitAnimation = true
-            for t in toasts {
-                let size = t.panel.frame.size
-                let frame = NSRect(x: area.maxX - Self.margin - size.width, y: top - size.height,
-                                   width: size.width, height: size.height)
-                top = frame.minY - Self.spacing
-                if t === appearing {
-                    t.panel.setFrame(frame.offsetBy(dx: 24, dy: 0), display: false)
-                    t.panel.alphaValue = 0
-                    t.panel.orderFrontRegardless()
-                    t.panel.animator().alphaValue = 1
-                }
+            ctx.duration = 0.3
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            for (t, frame) in targets {
+                if t === appearing { t.panel.animator().alphaValue = 1 }
                 t.panel.animator().setFrame(frame, display: true)
             }
         }

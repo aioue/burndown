@@ -2,14 +2,14 @@
 import PackageDescription
 
 let package = Package(
-    name: "Expire",
+    name: "Burndown",
     platforms: [.macOS(.v26)],
     products: [
-        .executable(name: "Expire", targets: ["Expire"]),
+        .executable(name: "Burndown", targets: ["Burndown"]),
     ],
     targets: [
-        .target(name: "ExpireCore"),
-        .executableTarget(name: "Expire", dependencies: ["ExpireCore"]),
-        .testTarget(name: "ExpireCoreTests", dependencies: ["ExpireCore"]),
+        .target(name: "BurndownCore"),
+        .executableTarget(name: "Burndown", dependencies: ["BurndownCore"]),
+        .testTarget(name: "BurndownCoreTests", dependencies: ["BurndownCore"]),
     ]
 )

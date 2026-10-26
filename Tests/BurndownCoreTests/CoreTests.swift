@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import ExpireCore
+@testable import BurndownCore
 
 @Suite struct RuleTests {
     func file(_ name: String, size: Int64 = 100, from: [String] = [], scope: Scope = .download) -> FileInfo {
@@ -8,16 +8,16 @@ import Testing
     }
 
     @Test func defaultAppliesWhenNoRuleMatches() {
-        let s = ExpireSettings()
+        let s = BurndownSettings()
         #expect(RuleEngine.evaluate(file("a.pdf"), settings: s) == .expire(.days(14), .trash))
     }
 
     @Test func screenshotsDisabledByDefault() {
-        #expect(RuleEngine.evaluate(file("Screenshot.png", scope: .screenshot), settings: ExpireSettings()) == nil)
+        #expect(RuleEngine.evaluate(file("Screenshot.png", scope: .screenshot), settings: BurndownSettings()) == nil)
     }
 
     @Test func firstMatchWins() {
-        var s = ExpireSettings()
+        var s = BurndownSettings()
         s.rules = [
             Rule(name: "dmg", conditions: [.extensions(["DMG"])], outcome: .expire(.days(1), .wipe)),
             Rule(name: "all", conditions: [], outcome: .ignore),
@@ -27,7 +27,7 @@ import Testing
     }
 
     @Test func disabledRuleSkipped() {
-        var s = ExpireSettings()
+        var s = BurndownSettings()
         s.rules = [Rule(name: "off", enabled: false, conditions: [], outcome: .ignore)]
         #expect(RuleEngine.evaluate(file("x"), settings: s) == .expire(.days(14), .trash))
     }
@@ -42,8 +42,8 @@ import Testing
     }
 
     @Test func rulesRoundTripThroughJSON() throws {
-        let s = ExpireSettings()
-        let back = try JSONDecoder().decode(ExpireSettings.self, from: JSONEncoder().encode(s))
+        let s = BurndownSettings()
+        let back = try JSONDecoder().decode(BurndownSettings.self, from: JSONEncoder().encode(s))
         #expect(back == s)
     }
 }

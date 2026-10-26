@@ -3,7 +3,7 @@ import Foundation
 
 public enum FileMeta {
     public static let keepTag = "Keep"
-    static let keepXattr = "com.aioue.expire.kept"
+    static let keepXattr = "com.aioue.burndown.kept"
 
     /// Size, source URLs (kMDItemWhereFroms) and scope → rule-engine input.
     public static func info(for url: URL, scope: Scope) -> FileInfo {

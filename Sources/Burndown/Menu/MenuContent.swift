@@ -1,4 +1,4 @@
-import ExpireCore
+import BurndownCore
 import SwiftUI
 
 struct MenuContent: View {

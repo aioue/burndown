@@ -1,4 +1,4 @@
-import ExpireCore
+import BurndownCore
 import SwiftUI
 
 /// Flat, editable view over a rule's condition list.

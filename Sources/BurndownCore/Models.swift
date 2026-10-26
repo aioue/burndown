@@ -101,7 +101,7 @@ public enum SecondButton: String, Codable, Sendable, CaseIterable {
     }
 }
 
-public struct ExpireSettings: Codable, Sendable, Equatable {
+public struct BurndownSettings: Codable, Sendable, Equatable {
     public var downloads = ScopeDefaults(enabled: true, lifetime: .days(14), action: .trash)
     public var screenshots = ScopeDefaults(enabled: false, lifetime: .days(14), action: .trash)
     public var rules: [Rule] = Rule.examples

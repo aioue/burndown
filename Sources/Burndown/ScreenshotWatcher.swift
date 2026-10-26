@@ -1,4 +1,4 @@
-import ExpireCore
+import BurndownCore
 import Foundation
 
 /// Live Spotlight query for screen captures created at or after `since`, wherever they are saved.
@@ -8,6 +8,7 @@ final class ScreenshotWatcher {
     private let since: Date
     private let onArrival: @MainActor (URL) -> Void
     private var query: NSMetadataQuery?
+    private var starting = false
     private var observers: [NSObjectProtocol] = []
     /// Reported paths and file identities, so a later rename or move is not a new arrival.
     private var reported: Set<String> = []
@@ -23,8 +24,25 @@ final class ScreenshotWatcher {
         self.onArrival = onArrival
     }
 
+    /// Spotlight silently hides results from protected folders (Desktop, Documents, Downloads...) until
+    /// the app has been granted access, so touch the screenshot folder first to trigger the prompt.
     func start() {
-        guard query == nil else { return }
+        guard !starting, query == nil else { return }
+        starting = true
+        let folder = Self.screenshotFolder
+        Task.detached {
+            _ = try? FileManager.default.contentsOfDirectory(atPath: folder)
+            await MainActor.run { [weak self] in self?.startQuery() }
+        }
+    }
+
+    private nonisolated static var screenshotFolder: String {
+        let loc = UserDefaults(suiteName: "com.apple.screencapture")?.string(forKey: "location") ?? "~/Desktop"
+        return (loc as NSString).expandingTildeInPath
+    }
+
+    private func startQuery() {
+        guard starting, query == nil else { return }
         let q = NSMetadataQuery()
         q.predicate = NSPredicate(format: "%K == 1 AND %K >= %@",
                                   "kMDItemIsScreenCapture", NSMetadataItemFSCreationDateKey, since as NSDate)
@@ -48,6 +66,7 @@ final class ScreenshotWatcher {
     }
 
     func stop() {
+        starting = false
         guard let q = query else { return }
         q.stop()
         for o in observers { NotificationCenter.default.removeObserver(o) }
@@ -68,7 +87,8 @@ final class ScreenshotWatcher {
     private func report(_ found: [(path: String, created: Date)]) {
         for (path, created) in found where created >= since {
             var st = stat()
-            guard !reported.contains(path), lstat(path, &st) == 0 else { continue }
+            guard !reported.contains(path) else { continue }
+            guard lstat(path, &st) == 0 else { continue }
             reported.insert(path)
             guard reportedIDs.insert(FileID(dev: st.st_dev, ino: UInt64(st.st_ino))).inserted else { continue }
             onArrival(URL(fileURLWithPath: path))
@@ -83,3 +103,4 @@ final class ScreenshotWatcher {
         return (path, created)
     }
 }
+
