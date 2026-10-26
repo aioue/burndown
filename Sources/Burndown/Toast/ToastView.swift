@@ -5,6 +5,8 @@ import SwiftUI
 @MainActor @Observable
 final class ToastHover {
     var isHovered = false
+    /// Set by the double-tap Shift shortcut: the Keep button flashes before the toast goes.
+    var keepFlash = false
 }
 
 /// Laid out to match a macOS alert-style notification. Measured from a Tahoe screenshot (2x):
@@ -59,7 +61,7 @@ struct ToastView: View {
             // Alert-style action column: two flat cells split by hairlines.
             Rectangle().fill(.separator).frame(width: 0.5)
             VStack(spacing: 0) {
-                actionCell(model.keepLabel, onKeep)
+                actionCell(model.keepLabel, flash: hover.keepFlash, onKeep)
                 Rectangle().fill(.separator).frame(height: 0.5)
                 actionCell(model.secondLabel, onSecond)
             }
@@ -67,6 +69,7 @@ struct ToastView: View {
         }
         .frame(width: Self.width)
         .frame(minHeight: 60)
+        .clipShape(RoundedRectangle(cornerRadius: Self.radius))
         .glassEffect(.regular, in: .rect(cornerRadius: Self.radius))
         .overlay(alignment: .topLeading) {
             if hover.isHovered {
@@ -104,7 +107,7 @@ struct ToastView: View {
         }
     }
 
-    private func actionCell(_ label: String, _ action: @escaping () -> Void) -> some View {
+    private func actionCell(_ label: String, flash: Bool = false, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(label)
                 .font(.system(size: 13))
@@ -114,6 +117,9 @@ struct ToastView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(ToastActionStyle())
+        .background(flash ? Color.accentColor.opacity(0.4) : .clear)
+        .scaleEffect(flash ? 1.06 : 1)
+        .animation(.easeOut(duration: 0.12), value: flash)
     }
 
     private var title: String { model.fileURL.lastPathComponent }

@@ -167,7 +167,18 @@ private final class Toast {
         }
     }
 
-    func keepFromShortcut() { finish(model.onKeep) }
+    /// Flash the Keep button briefly so the shortcut visibly registers, then keep and dismiss.
+    func keepFromShortcut() {
+        guard !hover.keepFlash else { return }
+        hover.keepFlash = true
+        timer?.cancel()
+        timer = nil
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(320))
+            guard let self else { return }
+            self.finish(self.model.onKeep)
+        }
+    }
 
     private func finish(_ action: (@MainActor () -> Void)?) {
         action?()
