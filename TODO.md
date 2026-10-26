@@ -35,6 +35,37 @@ Ideas that are not in v0.1. Roughly grouped; nothing here is committed to.
 - Drag files out of the menu list
 - Menu bar icon that reflects state (paused, files expiring soon)
 
+## Screenshot toast: true preview at capture time
+
+Today the toast shows a camera emoji, then swaps in the real preview about 5 s later when macOS writes the
+file. To show the actual image the moment the thumbnail appears, test a Screen Recording re-grab:
+
+- On the logged capture event, call `SCScreenshotManager.captureImage(in:)` (macOS 15.2+) with the
+  `captureRect` that `screencapture` logs, and use a filter that excludes the screenshot UI and Burndown so
+  the sliding thumbnail and the toast are not in the image
+- Plan a small spike: grab on a real capture, time it, check memory and CPU
+
+Pros
+
+- The preview appears with the toast instead of 5 s later
+- Reuses the capture event Burndown already gets from the log
+
+Cons
+
+- Needs Screen Recording permission: a one-time prompt, the toggle in System Settings, then a relaunch
+- Sequoia re-asks for approval about monthly; not confirmed whether Tahoe still does
+- Burndown is ad-hoc signed, so every rebuild loses the grant. It needs a stable signing certificate first
+- It is a re-grab tens of milliseconds after the capture, so moving content may differ from the real shot
+- `CGWindowListCreateImage` and `CGDisplayCreateImage` are obsoleted in macOS 15, so ScreenCaptureKit is the
+  only route
+
+Ruled out (checked, not worth revisiting)
+
+- No staging file, pasteboard write or readable temp folder holds the image before the thumbnail times out
+- Accessibility does not expose the thumbnail's pixels
+- Turning off the macOS floating thumbnail makes the file land instantly (no permission needed), but loses the
+  thumbnail's markup and drag features
+
 ## Polish and distribution
 
 - Proper app icon
