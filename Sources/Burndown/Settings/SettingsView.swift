@@ -32,7 +32,8 @@ struct SettingsView: View {
             ActivityTab(model: model).tabItem { Label("Activity", systemImage: "clock.arrow.circlepath") }.tag(Tab.activity)
         }
         .frame(width: 660, height: height)
-        .animation(.easeInOut(duration: 0.2), value: tab)
+        // No implicit animation here: it makes the Rules split view slide around while the window resizes.
+        .transaction { $0.animation = nil }
     }
 }
 
