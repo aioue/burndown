@@ -19,7 +19,8 @@ final class ToastCenter {
 
     static let maxVisible = 5
     static let margin: CGFloat = 10
-    static let spacing: CGFloat = 0
+    /// Each panel carries 8 pt of shadow padding per side, so -8 leaves roughly an 8 pt gap between cards.
+    static let spacing: CGFloat = -8
 
     private var toasts: [Toast] = []
 
