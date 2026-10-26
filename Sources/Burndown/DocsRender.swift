@@ -257,7 +257,7 @@ enum DocsRender {
                              radius: 12) { root in selectRule(2, in: root) }
                 continue
             }
-            try snapshot(window(SettingsView(model: model)), size: CGSize(width: 660, height: 680),
+            try snapshot(window(SettingsView(model: model)), size: CGSize(width: 660, height: 520),
                          name: "settings-\(tab)", into: out, radius: 12,
                          prepare: { root in
                              if let tabView: NSTabView = find(in: root) { tabView.selectTabViewItem(at: index) }

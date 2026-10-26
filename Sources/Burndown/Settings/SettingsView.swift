@@ -3,24 +3,40 @@ import SwiftUI
 
 struct SettingsView: View {
     @Bindable var model: AppModel
+    @State private var tab = Tab.general
+
+    enum Tab { case general, downloads, screenshots, rules, activity }
+
+    /// The window is as tall as the selected tab needs (measured natural heights plus a little slack),
+    /// so it grows and shrinks as you switch tabs instead of leaving empty space or cutting content off.
+    private var height: CGFloat {
+        switch tab {
+        case .general: 520
+        case .downloads: 220
+        case .screenshots: 346
+        case .rules: 600
+        case .activity: min(max(CGFloat(model.state.log.count), 3) * 30 + 24, 520)
+        }
+    }
 
     var body: some View {
-        TabView {
-            GeneralTab(model: model).tabItem { Label("General", systemImage: "gearshape") }
+        TabView(selection: $tab) {
+            GeneralTab(model: model).tabItem { Label("General", systemImage: "gearshape") }.tag(Tab.general)
             ScopeTab(title: "Downloads", d: $model.settings.downloads)
-                .tabItem { Label("Downloads", systemImage: "arrow.down.circle") }
+                .tabItem { Label("Downloads", systemImage: "arrow.down.circle") }.tag(Tab.downloads)
             ScopeTab(title: "Screenshots", d: $model.settings.screenshots,
                      early: $model.settings.screenshotEarlyToast,
                      footnote: "Tracks macOS screenshots wherever they are saved. Only screenshots taken after you turn this on are tracked.")
-                .tabItem { Label("Screenshots", systemImage: "camera.viewfinder") }
-            RulesTab(model: model).tabItem { Label("Rules", systemImage: "list.bullet.rectangle") }
-            ActivityTab(model: model).tabItem { Label("Activity", systemImage: "clock.arrow.circlepath") }
+                .tabItem { Label("Screenshots", systemImage: "camera.viewfinder") }.tag(Tab.screenshots)
+            RulesTab(model: model).tabItem { Label("Rules", systemImage: "list.bullet.rectangle") }.tag(Tab.rules)
+            ActivityTab(model: model).tabItem { Label("Activity", systemImage: "clock.arrow.circlepath") }.tag(Tab.activity)
         }
-        .frame(width: 660, height: 680)
+        .frame(width: 660, height: height)
+        .animation(.easeInOut(duration: 0.2), value: tab)
     }
 }
 
-private struct GeneralTab: View {
+struct GeneralTab: View {
     @Bindable var model: AppModel
 
     var body: some View {
@@ -83,7 +99,7 @@ private struct GeneralTab: View {
     }
 }
 
-private struct ScopeTab: View {
+struct ScopeTab: View {
     let title: String
     @Binding var d: ScopeDefaults
     var early: Binding<Bool>?
@@ -110,7 +126,7 @@ private struct ScopeTab: View {
     }
 }
 
-private struct ActivityTab: View {
+struct ActivityTab: View {
     var model: AppModel
 
     var body: some View {
