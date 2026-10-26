@@ -96,8 +96,8 @@ Show a toast for each new file, Show it as soon as the thumbnail appears">
 <details>
 <summary>More: menu dropdowns, General, Downloads and Activity tabs, icons</summary>
 
-Tracked files dropdown: a preview for images and PDFs, otherwise the Finder icon, and
-Keep, Expire now and Reveal in Finder as buttons on each row.
+Tracked files dropdown: a preview for images and PDFs, otherwise the Finder
+icon, and Keep, Expire now and Reveal in Finder as buttons on each row.
 
 <img src="docs/images/menu-tracked.png" width="404" alt="Menu with the Tracked
 files dropdown open: seven files with their expiry times and Keep, Expire now
