@@ -10,6 +10,12 @@ final class ToastHover {
 /// Laid out to match a macOS alert-style notification. Measured from a Tahoe screenshot (2x):
 /// 344 x 72 pt card, ~20 pt corners, 32 pt icon 13 pt from the edge, text 13 pt (title semibold, body
 /// regular, 16 pt line pitch) starting 58 pt in, timestamp right-aligned.
+/// Lets a toast's icon be swapped for a real preview after it is already on screen.
+@MainActor @Observable
+final class ToastPreview {
+    var image: NSImage?
+}
+
 struct ToastView: View {
     static let width: CGFloat = 344
     static let radius: CGFloat = 20
@@ -17,6 +23,7 @@ struct ToastView: View {
 
     let model: ToastModel
     let hover: ToastHover
+    let preview: ToastPreview
     let onKeep: () -> Void
     let onSecond: () -> Void
     let onClose: () -> Void
@@ -24,9 +31,7 @@ struct ToastView: View {
     var body: some View {
         HStack(spacing: 0) {
             HStack(alignment: .top, spacing: 13) {
-                Image(nsImage: NSWorkspace.shared.icon(forFile: model.fileURL.path))
-                    .resizable()
-                    .frame(width: 32, height: 32)
+                icon
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(title)
@@ -78,6 +83,21 @@ struct ToastView: View {
             }
         }
         .padding(8)
+    }
+
+    @ViewBuilder private var icon: some View {
+        if let image = preview.image {
+            Image(nsImage: image)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 32, height: 32)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(.separator))
+        } else {
+            Image(nsImage: NSWorkspace.shared.icon(forFile: model.fileURL.path))
+                .resizable()
+                .frame(width: 32, height: 32)
+        }
     }
 
     private func actionCell(_ label: String, _ action: @escaping () -> Void) -> some View {

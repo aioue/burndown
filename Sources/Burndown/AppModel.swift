@@ -32,6 +32,7 @@ final class AppModel {
         let id = UUID()
         let created = Date()
         var queued: Queued?
+        var toast: ToastHandle?
     }
     private var timerTask: Task<Void, Never>?
     private var wakeObserver: (any NSObjectProtocol)?
@@ -90,6 +91,11 @@ final class AppModel {
         // A screenshot whose toast was already shown at capture time just gets bound to its item.
         if scope == .screenshot, let early = takePendingShot() {
             shotItems[early.id] = item.id
+            if let handle = early.toast {
+                Task {
+                    if let image = await ImagePreview.thumbnail(of: url) { handle.setPreview(image) }
+                }
+            }
             switch early.queued {
             case .keep: keep(item.id)
             case .second: secondAction(item.id)
@@ -111,10 +117,9 @@ final class AppModel {
         let info = FileInfo(name: name, size: 0, scope: .screenshot)
         guard let outcome = RuleEngine.evaluate(info, settings: s),
               case .expire(let life, let action) = outcome, life.seconds != nil else { return }
-        let shot = PendingShot()
-        pendingShots.append(shot)
+        var shot = PendingShot()
         let id = shot.id
-        ToastCenter.shared.show(ToastModel(
+        shot.toast = ToastCenter.shared.show(ToastModel(
             fileURL: capture.url,
             message: "\(name) will be \(action.pastTense) after \(life.phrase)",
             keepLabel: s.keepLabel,
@@ -122,6 +127,7 @@ final class AppModel {
             dismissAfter: s.toastSeconds,
             onKeep: { [weak self] in self?.resolveShot(id, .keep) },
             onSecond: { [weak self] in self?.resolveShot(id, .second) }))
+        pendingShots.append(shot)
     }
 
     /// Oldest capture still waiting for its file. Captures that never produce one (thumbnail swiped away,

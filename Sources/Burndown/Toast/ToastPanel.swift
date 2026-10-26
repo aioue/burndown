@@ -12,6 +12,11 @@ struct ToastModel {
     let onSecond: @MainActor () -> Void
 }
 
+/// Returned by `ToastCenter.show` so the caller can update a toast that is already visible.
+struct ToastHandle {
+    let setPreview: @MainActor (NSImage) -> Void
+}
+
 /// Stacks toast panels at the top right of the main screen, newest first.
 @MainActor
 final class ToastCenter {
@@ -26,13 +31,15 @@ final class ToastCenter {
 
     private init() {}
 
-    func show(_ model: ToastModel) {
+    @discardableResult
+    func show(_ model: ToastModel) -> ToastHandle {
         let toast = Toast(model: model, center: self)
         toasts.insert(toast, at: 0)
         while toasts.count > Self.maxVisible, let oldest = toasts.last {
             dismiss(oldest, relayout: false)
         }
         layout(appearing: toast)
+        return ToastHandle(setPreview: { [weak toast] image in toast?.preview.image = image })
     }
 
     fileprivate func dismiss(_ toast: Toast, relayout: Bool = true) {
@@ -78,6 +85,7 @@ private final class Toast {
     let panel: ToastWindow
     private let model: ToastModel
     private let hover = ToastHover()
+    let preview = ToastPreview()
     private weak var center: ToastCenter?
     private var timer: Task<Void, Never>?
     private var deadline: Date?
@@ -89,7 +97,7 @@ private final class Toast {
         remaining = model.dismissAfter
         panel = ToastWindow()
 
-        let view = ToastView(model: model, hover: hover,
+        let view = ToastView(model: model, hover: hover, preview: preview,
                              onKeep: { [weak self] in self?.finish(model.onKeep) },
                              onSecond: { [weak self] in self?.finish(model.onSecond) },
                              onClose: { [weak self] in self?.finish(nil) })
