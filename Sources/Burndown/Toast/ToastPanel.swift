@@ -174,7 +174,7 @@ private final class Toast {
         timer?.cancel()
         timer = nil
         Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .milliseconds(320))
+            try? await Task.sleep(for: .milliseconds(480))
             guard let self else { return }
             self.finish(self.model.onKeep)
         }

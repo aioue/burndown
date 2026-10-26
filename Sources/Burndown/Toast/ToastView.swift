@@ -120,6 +120,7 @@ struct ToastView: View {
         .background(flash ? Color.accentColor.opacity(0.4) : .clear)
         .scaleEffect(flash ? 1.06 : 1)
         .animation(.easeOut(duration: 0.12), value: flash)
+        .overlay { if flash { SparkleBurst() } }
     }
 
     private var title: String { model.fileURL.lastPathComponent }
@@ -137,5 +138,37 @@ private struct ToastActionStyle: ButtonStyle {
         configuration.label
             .foregroundStyle(.primary)
             .background(configuration.isPressed ? Color.primary.opacity(0.12) : .clear)
+    }
+}
+
+/// A short burst of sparkles radiating from the centre of whatever it overlays.
+private struct SparkleBurst: View {
+    @State private var progress: CGFloat = 0
+
+    private static let sparks: [(angle: Double, distance: CGFloat, size: CGFloat, color: Color)] = [
+        (0, 34, 11, .yellow), (32, 26, 8, .white), (70, 38, 10, .orange), (105, 24, 7, .yellow),
+        (140, 34, 11, .white), (178, 28, 8, .yellow), (215, 38, 10, .white), (250, 26, 7, .orange),
+        (285, 34, 11, .yellow), (325, 24, 8, .white),
+    ]
+
+    var body: some View {
+        ZStack {
+            ForEach(Self.sparks.indices, id: \.self) { i in
+                let s = Self.sparks[i]
+                let radians = s.angle * .pi / 180
+                let dx = CGFloat(cos(radians)) * s.distance * progress
+                let dy = CGFloat(sin(radians)) * s.distance * progress
+                let fade = 1.0 - Double(progress * progress)
+                Image(systemName: "sparkle")
+                    .font(.system(size: s.size, weight: .bold))
+                    .foregroundStyle(s.color)
+                    .scaleEffect(0.3 + progress * 0.9)
+                    .rotationEffect(.degrees(Double(progress) * 70))
+                    .offset(x: dx, y: dy)
+                    .opacity(fade)
+            }
+        }
+        .allowsHitTesting(false)
+        .onAppear { withAnimation(.easeOut(duration: 0.5)) { progress = 1 } }
     }
 }
