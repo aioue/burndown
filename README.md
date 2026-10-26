@@ -103,8 +103,8 @@ Keep, Expire now and Reveal in Finder as buttons on each row.
 files dropdown open: seven files with their expiry times and Keep, Expire now
 and Reveal buttons">
 
-Activity dropdown: what expired, with a button to restore anything that went to the
-Trash.
+Activity dropdown: what expired, with a button to restore anything that went
+to the Trash.
 
 <img src="docs/images/menu-activity.png" width="404" alt="Menu with the Activity
 dropdown open: seven expired files, each trashed one with a restore button">
