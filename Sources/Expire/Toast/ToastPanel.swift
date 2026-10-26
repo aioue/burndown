@@ -1,0 +1,190 @@
+import AppKit
+import SwiftUI
+
+struct ToastModel {
+    let fileURL: URL
+    let message: String
+    let keepLabel: String
+    let secondLabel: String
+    /// Seconds before auto-dismiss; 0 = never.
+    let dismissAfter: Double
+    let onKeep: @MainActor () -> Void
+    let onSecond: @MainActor () -> Void
+}
+
+/// Stacks toast panels at the top right of the main screen, newest first.
+@MainActor
+final class ToastCenter {
+    static let shared = ToastCenter()
+
+    static let maxVisible = 5
+    static let margin: CGFloat = 10
+    static let spacing: CGFloat = 0
+
+    private var toasts: [Toast] = []
+
+    private init() {}
+
+    func show(_ model: ToastModel) {
+        let toast = Toast(model: model, center: self)
+        toasts.insert(toast, at: 0)
+        while toasts.count > Self.maxVisible, let oldest = toasts.last {
+            dismiss(oldest, relayout: false)
+        }
+        layout(appearing: toast)
+    }
+
+    fileprivate func dismiss(_ toast: Toast, relayout: Bool = true) {
+        guard let i = toasts.firstIndex(where: { $0 === toast }) else { return }
+        toasts.remove(at: i)
+        toast.close()
+        if relayout { layout(appearing: nil) }
+    }
+
+    private func layout(appearing: Toast?) {
+        guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
+        let area = screen.visibleFrame
+        var top = area.maxY - Self.margin
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.2
+            ctx.allowsImplicitAnimation = true
+            for t in toasts {
+                let size = t.panel.frame.size
+                let frame = NSRect(x: area.maxX - Self.margin - size.width, y: top - size.height,
+                                   width: size.width, height: size.height)
+                top = frame.minY - Self.spacing
+                if t === appearing {
+                    t.panel.setFrame(frame.offsetBy(dx: 24, dy: 0), display: false)
+                    t.panel.alphaValue = 0
+                    t.panel.orderFrontRegardless()
+                    t.panel.animator().alphaValue = 1
+                }
+                t.panel.animator().setFrame(frame, display: true)
+            }
+        }
+    }
+}
+
+/// One toast: its panel, hover state and auto-dismiss timer.
+@MainActor
+private final class Toast {
+    let panel: ToastWindow
+    private let model: ToastModel
+    private let hover = ToastHover()
+    private weak var center: ToastCenter?
+    private var timer: Task<Void, Never>?
+    private var deadline: Date?
+    private var remaining: Double
+
+    init(model: ToastModel, center: ToastCenter) {
+        self.model = model
+        self.center = center
+        remaining = model.dismissAfter
+        panel = ToastWindow()
+
+        let view = ToastView(model: model, hover: hover,
+                             onKeep: { [weak self] in self?.finish(model.onKeep) },
+                             onSecond: { [weak self] in self?.finish(model.onSecond) },
+                             onClose: { [weak self] in self?.finish(nil) })
+        let hosting = ToastHostingView(rootView: view)
+        let size = hosting.fittingSize
+        let container = HoverView(frame: NSRect(origin: .zero, size: size))
+        hosting.frame = container.bounds
+        hosting.autoresizingMask = [.width, .height]
+        container.addSubview(hosting)
+        container.onHover = { [weak self] inside in self?.setHovered(inside) }
+        panel.contentView = container
+        panel.setContentSize(size)
+        startTimer()
+    }
+
+    func close() {
+        timer?.cancel()
+        timer = nil
+        let panel = panel
+        (panel.contentView as? HoverView)?.onHover = nil
+        Task { @MainActor in
+            await NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.15
+                panel.animator().alphaValue = 0
+            }
+            panel.orderOut(nil)
+            panel.contentView = nil
+            panel.close()
+        }
+    }
+
+    private func finish(_ action: (@MainActor () -> Void)?) {
+        action?()
+        center?.dismiss(self)
+    }
+
+    private func setHovered(_ inside: Bool) {
+        hover.isHovered = inside
+        if inside {
+            if let d = deadline { remaining = max(0, d.timeIntervalSinceNow) }
+            timer?.cancel()
+            timer = nil
+            deadline = nil
+        } else {
+            remaining = max(remaining, 2)
+            startTimer()
+        }
+    }
+
+    private func startTimer() {
+        guard model.dismissAfter > 0, timer == nil else { return }
+        let seconds = remaining
+        deadline = Date().addingTimeInterval(seconds)
+        timer = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(seconds))
+            guard !Task.isCancelled, let self else { return }
+            self.center?.dismiss(self)
+        }
+    }
+}
+
+/// Borderless, non-activating, floating on every space, never key or main.
+private final class ToastWindow: NSPanel {
+    init() {
+        super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel],
+                   backing: .buffered, defer: true)
+        isFloatingPanel = true
+        level = .floating
+        collectionBehavior = [.canJoinAllSpaces, .transient, .ignoresCycle, .fullScreenAuxiliary]
+        hidesOnDeactivate = false
+        isReleasedWhenClosed = false
+        isExcludedFromWindowsMenu = true
+        isMovable = false
+        backgroundColor = .clear
+        isOpaque = false
+        hasShadow = true
+        animationBehavior = .none
+    }
+
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
+}
+
+/// Clicks land on the first try even though the panel is never key.
+private final class ToastHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
+/// Reports hover with an always-active tracking area (the app is usually inactive).
+private final class HoverView: NSView {
+    var onHover: ((Bool) -> Void)?
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                                       owner: self, userInfo: nil))
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override func mouseEntered(with event: NSEvent) { onHover?(true) }
+    override func mouseExited(with event: NSEvent) { onHover?(false) }
+}
