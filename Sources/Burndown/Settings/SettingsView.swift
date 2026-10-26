@@ -16,7 +16,7 @@ struct SettingsView: View {
             RulesTab(model: model).tabItem { Label("Rules", systemImage: "list.bullet.rectangle") }
             ActivityTab(model: model).tabItem { Label("Activity", systemImage: "clock.arrow.circlepath") }
         }
-        .frame(width: 560, height: 420)
+        .frame(width: 560, height: 500)
     }
 }
 
@@ -24,6 +24,18 @@ private struct GeneralTab: View {
     @Bindable var model: AppModel
 
     var body: some View {
+        VStack(spacing: 0) {
+            form
+            HStack {
+                Spacer()
+                testToastChip
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+        }
+    }
+
+    private var form: some View {
         Form {
             Toggle("Launch at login", isOn: $model.launchAtLogin)
             Toggle("Pause tracking", isOn: $model.settings.paused)
@@ -55,19 +67,19 @@ private struct GeneralTab: View {
             }
         }
         .formStyle(.grouped)
-        .overlay(alignment: .bottomTrailing) {
-            Button { model.sendTestToast() } label: {
-                Image(systemName: "bell.badge")
-                    .font(.system(size: 14, weight: .medium))
-                    .frame(width: 32, height: 32)
-                    .background(.regularMaterial, in: Circle())
-                    .overlay(Circle().strokeBorder(.separator))
-                    .contentShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .help("Show a test toast")
-            .padding(14)
+    }
+
+    private var testToastChip: some View {
+        Button { model.sendTestToast() } label: {
+            Image(systemName: "bell.badge")
+                .font(.system(size: 14, weight: .medium))
+                .frame(width: 32, height: 32)
+                .background(.regularMaterial, in: Circle())
+                .overlay(Circle().strokeBorder(.separator))
+                .contentShape(Circle())
         }
+        .buttonStyle(.plain)
+        .help("Show a test toast")
     }
 }
 
