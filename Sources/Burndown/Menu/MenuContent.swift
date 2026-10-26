@@ -68,32 +68,27 @@ struct MenuContent: View {
         }
     }
 
-    @ViewBuilder private var trackedList: some View {
+    /// Tracked files live in a submenu so the popover stays short; each file has its own actions submenu.
+    private var trackedList: some View {
         let items = model.state.items.sorted { ($0.due ?? .distantFuture) < ($1.due ?? .distantFuture) }
-        if items.isEmpty {
-            Text("No files tracked").foregroundStyle(.secondary)
-        } else {
-            Text("Tracked files").font(.caption).foregroundStyle(.secondary)
-            ForEach(items.prefix(12)) { item in
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text(item.name).lineLimit(1).truncationMode(.middle)
-                        if let due = item.due {
-                            Text("\(item.action == .wipe ? "wipe" : "trash") in \(Text(due, style: .relative))")
-                                .font(.caption).foregroundStyle(.secondary)
-                        } else {
-                            Text("no expiry").font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                    Spacer()
+        let shown = items.prefix(25)
+        return Menu("Tracked files (\(items.count))") {
+            if items.isEmpty { Text("No files tracked") }
+            ForEach(shown) { item in
+                Menu("\(item.name)  \(Self.when(item))") {
                     Button("Keep") { model.keep(item.id) }
-                    Button("Now") { model.expireNow(item.id) }
-                    Button { model.reveal(item.id) } label: { Image(systemName: "magnifyingglass") }
-                        .help("Reveal in Finder")
+                    Button("Expire now") { model.expireNow(item.id) }
+                    Button("Reveal in Finder") { model.reveal(item.id) }
                 }
-                .buttonStyle(.borderless)
             }
-            if items.count > 12 { Text("+ \(items.count - 12) more").font(.caption).foregroundStyle(.secondary) }
+            if items.count > shown.count { Text("+ \(items.count - shown.count) more") }
         }
+        .menuStyle(.borderlessButton)
+    }
+
+    private static func when(_ item: TrackedItem) -> String {
+        guard let due = item.due else { return "(no expiry)" }
+        let verb = item.action == .wipe ? "wipe" : "trash"
+        return "(\(verb) \(due.formatted(.relative(presentation: .named))))"
     }
 }
