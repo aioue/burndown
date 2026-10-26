@@ -5,8 +5,6 @@ struct MenuContent: View {
     @Bindable var model: AppModel
     @Environment(\.openSettings) private var openSettings
     @State private var open: Page?
-    /// Bottom edge of the Tracked files / Activity row in the panel, where the dropdown hangs from.
-    @State private var rowBottom: CGFloat = 0
 
     enum Page { case tracked, activity }
 
@@ -34,7 +32,7 @@ struct MenuContent: View {
                 Spacer()
                 pageLink("Activity", .activity)
             }
-            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named("panel")).maxY } action: { rowBottom = $0 }
+            if let page = open { dropdown(page) }
 
             Divider()
             HStack {
@@ -49,10 +47,7 @@ struct MenuContent: View {
         }
         .padding(12)
         .frame(width: 340)
-        .coordinateSpace(name: "panel")
-        // Make room for the dropdown if it is taller than the menu below its row.
-        .frame(minHeight: open.map { rowBottom + 6 + dropdownHeight($0) + 12 }, alignment: .top)
-        .overlay(alignment: .topLeading) { dropdownLayer }
+        .animation(.easeOut(duration: 0.15), value: open)
         .onDisappear { open = nil }
     }
 
@@ -69,24 +64,17 @@ struct MenuContent: View {
         min(max(CGFloat(rowCount(page)), 1) * 36, 320) + 20
     }
 
-    @ViewBuilder private var dropdownLayer: some View {
-        if let page = open {
-            ZStack(alignment: .topLeading) {
-                // Click anywhere else to close.
-                Color.black.opacity(0.001).onTapGesture { open = nil }
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 8) {
-                        if page == .tracked { trackedRows } else { activityRows }
-                    }
-                    .padding(10)
-                }
-                .frame(width: 316, height: dropdownHeight(page))
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.separator))
-                .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
-                .offset(x: 12, y: rowBottom + 6)
+    /// Opens in place under its row, pushing the Settings line down so it stays visible.
+    private func dropdown(_ page: Page) -> some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 8) {
+                if page == .tracked { trackedRows } else { activityRows }
             }
+            .padding(10)
         }
+        .frame(height: dropdownHeight(page))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.separator))
     }
 
     private func pageLink(_ title: String, _ target: Page) -> some View {
