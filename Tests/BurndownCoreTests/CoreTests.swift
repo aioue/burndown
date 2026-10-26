@@ -137,3 +137,14 @@ import Testing
         #expect(Expirer.expire(item, downloadsDir: dl) == .expired)
     }
 }
+
+@Suite struct MigrationTests {
+    @Test func settingsFromOlderVersionStillDecode() throws {
+        let json = #"{"paused":true,"keepLabel":"Hold"}"#
+        let s = try JSONDecoder().decode(BurndownSettings.self, from: Data(json.utf8))
+        #expect(s.paused)
+        #expect(s.keepLabel == "Hold")
+        #expect(s.screenshotEarlyToast)
+        #expect(s.downloads.lifetime == .days(14))
+    }
+}

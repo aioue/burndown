@@ -12,7 +12,8 @@ final class AppModel {
         didSet {
             persist()
             let old = oldValue.settings, new = state.settings
-            if old.screenshots.enabled != new.screenshots.enabled { syncScreenshots() }
+            if old.screenshots.enabled != new.screenshots.enabled
+                || old.screenshotEarlyToast != new.screenshotEarlyToast { syncScreenshots() }
             if old.paused && !new.paused { expireDue() }
         }
     }
@@ -20,6 +21,18 @@ final class AppModel {
     private let downloadsDir = Expirer.defaultDownloads
     private var downloadsWatcher: DownloadsWatcher?
     private var screenshotWatcher: ScreenshotWatcher?
+    private var screenshotLogWatcher: ScreenshotLogWatcher?
+    /// Early screenshot toasts waiting for their file (macOS writes it ~5 s after the thumbnail appears).
+    private var pendingShots: [PendingShot] = []
+    private var shotItems: [UUID: UUID] = [:]
+
+    private enum Queued { case keep, second }
+
+    private struct PendingShot {
+        let id = UUID()
+        let created = Date()
+        var queued: Queued?
+    }
     private var timerTask: Task<Void, Never>?
     private var wakeObserver: (any NSObjectProtocol)?
 
@@ -74,8 +87,56 @@ final class AppModel {
             action: action, sourceHost: info.sourceHost)
         state.items.append(item)
         rearm()
+        // A screenshot whose toast was already shown at capture time just gets bound to its item.
+        if scope == .screenshot, let early = takePendingShot() {
+            shotItems[early.id] = item.id
+            switch early.queued {
+            case .keep: keep(item.id)
+            case .second: secondAction(item.id)
+            case nil: break
+            }
+            return
+        }
         let d = state.settings.defaults(for: scope)
         if toast, d.showToast, life.seconds != nil { showToast(for: item, lifetime: life) }
+    }
+
+    // MARK: Early screenshot toast
+
+    /// Called when `screencapture` logs a capture: the toast appears with the thumbnail, the file arrives later.
+    private func screenshotCaptured(_ capture: ScreenshotLogWatcher.Capture) {
+        let s = state.settings
+        guard !s.paused, s.screenshots.enabled, s.screenshots.showToast else { return }
+        let name = capture.url.lastPathComponent
+        let info = FileInfo(name: name, size: 0, scope: .screenshot)
+        guard let outcome = RuleEngine.evaluate(info, settings: s),
+              case .expire(let life, let action) = outcome, life.seconds != nil else { return }
+        let shot = PendingShot()
+        pendingShots.append(shot)
+        let id = shot.id
+        ToastCenter.shared.show(ToastModel(
+            fileURL: capture.url,
+            message: "\(name) will be \(action.pastTense) after \(life.phrase)",
+            keepLabel: s.keepLabel,
+            secondLabel: s.secondLabel ?? s.secondButton.defaultLabel,
+            dismissAfter: s.toastSeconds,
+            onKeep: { [weak self] in self?.resolveShot(id, .keep) },
+            onSecond: { [weak self] in self?.resolveShot(id, .second) }))
+    }
+
+    /// Oldest capture still waiting for its file. Captures that never produce one (thumbnail swiped away,
+    /// cancelled) are dropped after two minutes.
+    private func takePendingShot() -> PendingShot? {
+        pendingShots.removeAll { Date().timeIntervalSince($0.created) > 120 }
+        return pendingShots.isEmpty ? nil : pendingShots.removeFirst()
+    }
+
+    private func resolveShot(_ id: UUID, _ action: Queued) {
+        if let itemID = shotItems[id] {
+            if action == .keep { keep(itemID) } else { secondAction(itemID) }
+        } else if let i = pendingShots.firstIndex(where: { $0.id == id }) {
+            pendingShots[i].queued = action
+        }
     }
 
     /// Menu action: start countdowns for files already sitting in Downloads.
@@ -208,7 +269,15 @@ final class AppModel {
     private func syncScreenshots() {
         screenshotWatcher?.stop()
         screenshotWatcher = nil
+        screenshotLogWatcher?.stop()
+        screenshotLogWatcher = nil
+        pendingShots = []
         guard state.settings.screenshots.enabled else { return }
+        if state.settings.screenshotEarlyToast {
+            let logWatcher = ScreenshotLogWatcher { [weak self] in self?.screenshotCaptured($0) }
+            logWatcher.start()
+            screenshotLogWatcher = logWatcher
+        }
         if state.screenshotsSince == nil { state.screenshotsSince = Date() }
         let watcher = ScreenshotWatcher(since: state.screenshotsSince ?? Date()) { [weak self] url in
             self?.track(url, scope: .screenshot)

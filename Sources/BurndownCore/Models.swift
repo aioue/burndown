@@ -112,8 +112,26 @@ public struct BurndownSettings: Codable, Sendable, Equatable {
     public var secondButton = SecondButton.expireNow
     public var secondLabel: String?
     public var snoozeDays: Double = 7
+    /// Show the screenshot toast when the thumbnail appears rather than when the file is written.
+    public var screenshotEarlyToast = true
 
     public init() {}
+
+    // Every key is optional so state saved by an older version still loads.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = BurndownSettings()
+        downloads = try c.decodeIfPresent(ScopeDefaults.self, forKey: .downloads) ?? d.downloads
+        screenshots = try c.decodeIfPresent(ScopeDefaults.self, forKey: .screenshots) ?? d.screenshots
+        rules = try c.decodeIfPresent([Rule].self, forKey: .rules) ?? d.rules
+        paused = try c.decodeIfPresent(Bool.self, forKey: .paused) ?? d.paused
+        toastSeconds = try c.decodeIfPresent(Double.self, forKey: .toastSeconds) ?? d.toastSeconds
+        keepLabel = try c.decodeIfPresent(String.self, forKey: .keepLabel) ?? d.keepLabel
+        secondButton = try c.decodeIfPresent(SecondButton.self, forKey: .secondButton) ?? d.secondButton
+        secondLabel = try c.decodeIfPresent(String.self, forKey: .secondLabel)
+        snoozeDays = try c.decodeIfPresent(Double.self, forKey: .snoozeDays) ?? d.snoozeDays
+        screenshotEarlyToast = try c.decodeIfPresent(Bool.self, forKey: .screenshotEarlyToast) ?? d.screenshotEarlyToast
+    }
 
     public func defaults(for scope: Scope) -> ScopeDefaults {
         scope == .download ? downloads : screenshots

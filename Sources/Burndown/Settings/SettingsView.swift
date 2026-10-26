@@ -10,6 +10,7 @@ struct SettingsView: View {
             ScopeTab(title: "Downloads", d: $model.settings.downloads)
                 .tabItem { Label("Downloads", systemImage: "arrow.down.circle") }
             ScopeTab(title: "Screenshots", d: $model.settings.screenshots,
+                     early: $model.settings.screenshotEarlyToast,
                      footnote: "Tracks macOS screenshots wherever they are saved. Only screenshots taken after you turn this on are tracked.")
                 .tabItem { Label("Screenshots", systemImage: "camera.viewfinder") }
             RulesTab(model: model).tabItem { Label("Rules", systemImage: "list.bullet.rectangle") }
@@ -66,6 +67,7 @@ private struct GeneralTab: View {
 private struct ScopeTab: View {
     let title: String
     @Binding var d: ScopeDefaults
+    var early: Binding<Bool>?
     var footnote: String?
 
     var body: some View {
@@ -77,6 +79,12 @@ private struct ScopeTab: View {
                 Text("Wipe (permanent delete)").tag(Action.wipe)
             }
             Toggle("Show a toast for each new file", isOn: $d.showToast)
+            if let early {
+                Toggle("Show it as soon as the thumbnail appears", isOn: early)
+                    .disabled(!d.showToast)
+                Text("macOS only saves a screenshot about 5 seconds after the thumbnail appears. This watches the system log to show the toast sooner (needs an admin account).")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             if let footnote { Text(footnote).font(.caption).foregroundStyle(.secondary) }
         }
         .formStyle(.grouped)
